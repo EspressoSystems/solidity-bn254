@@ -13,18 +13,17 @@
   };
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-  inputs.rust-overlay.url = "github:oxalica/rust-overlay";
-
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
   inputs.foundry.url = "github:shazow/foundry.nix"; # Use monthly branch for permanent releases
   inputs.solc-bin.url = "github:EspressoSystems/nix-solc-bin";
+  inputs.pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
 
   outputs =
     { self
     , nixpkgs
-    , rust-overlay
     , flake-utils
+    , pre-commit-hooks
     , foundry
     , solc-bin
     , ...
@@ -32,7 +31,6 @@
     flake-utils.lib.eachDefaultSystem (system:
     let
       overlays = [
-        (import rust-overlay)
         foundry.overlay
         solc-bin.overlays.default
       ];
@@ -42,29 +40,42 @@
     in
     with pkgs;
     {
+      checks = {
+        pre-commit-check = pre-commit-hooks.lib.${system}.run {
+          src = ./.;
+          hooks = {
+            forge-fmt = {
+              enable = true;
+              description = "Enforce forge fmt";
+              entry = "forge fmt";
+              types_or = [ "solidity" ];
+              pass_filenames = false;
+            };
+            nixpkgs-fmt.enable = true;
+          };
+        };
+      };
       devShells.default =
         let
-          stableToolchain = pkgs.rust-bin.stable.latest.minimal.override {
-            extensions = [ "rustfmt" "clippy" "llvm-tools-preview" "rust-src" ];
-          };
           solc = pkgs.solc-bin.latest;
+          nixWithFlakes = pkgs.writeShellScriptBin "nix" ''
+            exec ${pkgs.nixFlakes}/bin/nix --experimental-features "nix-command flakes" "$@"
+          '';
         in
         mkShell
           {
             buildInputs = [
-              # Rust dependencies
-              pkgconfig
-              stableToolchain
+              pkg-config
               coreutils
 
               foundry-bin
               solc
+              nixWithFlakes
+              nixpkgs-fmt
             ] ++ lib.optionals stdenv.isDarwin [ darwin.apple_sdk.frameworks.SystemConfiguration ];
             shellHook = ''
-              # Prevent cargo aliases from using programs in `~/.cargo` to avoid conflicts
-              # with rustup installations.
-              export CARGO_HOME=$HOME/.cargo-nix
-            '';
+              # Add shell hook here
+            '' + self.checks.${system}.pre-commit-check.shellHook;
             FOUNDRY_SOLC = "${solc}/bin/solc";
           };
     }
