@@ -16,12 +16,13 @@
   inputs.rust-overlay.url = "github:oxalica/rust-overlay";
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
-  inputs.fenix.url = "github:nix-community/fenix";
-  inputs.fenix.inputs.nixpkgs.follows = "nixpkgs";
-
   inputs.foundry.url = "github:shazow/foundry.nix"; # Use monthly branch for permanent releases
   inputs.solc-bin.url = "github:EspressoSystems/nix-solc-bin";
   inputs.pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
+
+  # support for shell.nix shim
+  inputs.flake-compat.url = "github:edolstra/flake-compat";
+  inputs.flake-compat.flake = false;
 
   outputs =
     { self
@@ -29,7 +30,6 @@
     , rust-overlay
     , flake-utils
     , pre-commit-hooks
-    , fenix
     , foundry
     , solc-bin
     , ...
@@ -90,9 +90,8 @@
       devShells.default =
         let
           stableToolchain = pkgs.rust-bin.stable.latest.minimal.override {
-            extensions = [ "rustfmt" "clippy" "llvm-tools-preview" "rust-src" ];
+            extensions = [ "rustfmt" "clippy" "llvm-tools-preview" "rust-src" "rust-analyzer" ];
           };
-          solc = pkgs.solc-bin.latest;
           nixWithFlakes = pkgs.writeShellScriptBin "nix" ''
             exec ${pkgs.nixFlakes}/bin/nix --experimental-features "nix-command flakes" "$@"
           '';
@@ -109,7 +108,6 @@
               cargo-edit
               cargo-sort
               just
-              fenix.packages.${system}.rust-analyzer
 
               foundry-bin
               solc
