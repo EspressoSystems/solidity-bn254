@@ -66,13 +66,12 @@ library BN254 {
     /// @return the generator of G2
     // solhint-disable-next-line func-name-mixedcase
     function P2() internal pure returns (G2Point memory) {
-        return
-            G2Point({
-                x0: 0x198e9393920d483a7260bfb731fb5d25f1aa493335a9e71297e485b7aef312c2,
-                x1: 0x1800deef121f1e76426a00665e5c4479674322d4f75edadd46debd5cd992f6ed,
-                y0: 0x090689d0585ff075ec9e99ad690c3395bc4b313370b38ef355acdadcd122975b,
-                y1: 0x12c85ea5db8c6deb4aab71808dcb408fe3d1e7690c43d37b4ce6cc0166fa7daa
-            });
+        return G2Point({
+            x0: 0x198e9393920d483a7260bfb731fb5d25f1aa493335a9e71297e485b7aef312c2,
+            x1: 0x1800deef121f1e76426a00665e5c4479674322d4f75edadd46debd5cd992f6ed,
+            y0: 0x090689d0585ff075ec9e99ad690c3395bc4b313370b38ef355acdadcd122975b,
+            y1: 0x12c85ea5db8c6deb4aab71808dcb408fe3d1e7690c43d37b4ce6cc0166fa7daa
+        });
     }
 
     /// @dev check if a G1 point is Infinity
@@ -112,9 +111,7 @@ library BN254 {
             success := staticcall(sub(gas(), 2000), 6, input, 0xc0, r, 0x60)
             // Use "invalid" to make gas estimation work
             switch success
-            case 0 {
-                revert(0, 0)
-            }
+            case 0 { revert(0, 0) }
         }
         require(success, "Bn254: group addition failed!");
     }
@@ -131,9 +128,7 @@ library BN254 {
             success := staticcall(sub(gas(), 2000), 7, input, 0x80, r, 0x60)
             // Use "invalid" to make gas estimation work
             switch success
-            case 0 {
-                revert(0, 0)
-            }
+            case 0 { revert(0, 0) }
         }
         require(success, "Bn254: scalar mul failed!");
     }
@@ -189,10 +184,11 @@ library BN254 {
             let x := mload(point)
             let y := mload(add(point, 0x20))
 
-            isWellFormed := and(
-                and(and(lt(x, p), lt(y, p)), not(or(iszero(x), iszero(y)))),
-                eq(mulmod(y, y, p), addmod(mulmod(x, mulmod(x, x, p), p), 3, p))
-            )
+            isWellFormed :=
+                and(
+                    and(and(lt(x, p), lt(y, p)), not(or(iszero(x), iszero(y)))),
+                    eq(mulmod(y, y, p), addmod(mulmod(x, mulmod(x, x, p), p), 3, p))
+                )
         }
         require(isWellFormed, "Bn254: invalid G1 point");
     }
@@ -257,25 +253,19 @@ library BN254 {
     // @return base^exponent (mod modulus)
     // This method is ideal for small exponents (~64 bits or less), as it is cheaper than using the pow precompile
     // @notice credit: credit: Aztec, Spilsbury Holdings Ltd
-    function powSmall(
-        uint256 base,
-        uint256 exponent,
-        uint256 modulus
-    ) internal pure returns (uint256) {
+    function powSmall(uint256 base, uint256 exponent, uint256 modulus)
+        internal
+        pure
+        returns (uint256)
+    {
         uint256 result = 1;
         uint256 input = base;
         uint256 count = 1;
 
         assembly {
             let endpoint := add(exponent, 0x01)
-            for {
-
-            } lt(count, endpoint) {
-                count := add(count, count)
-            } {
-                if and(exponent, count) {
-                    result := mulmod(result, input, modulus)
-                }
+            for { } lt(count, endpoint) { count := add(count, count) } {
+                if and(exponent, count) { result := mulmod(result, input, modulus) }
                 input := mulmod(input, input, modulus)
             }
         }
