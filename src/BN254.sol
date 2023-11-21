@@ -14,10 +14,15 @@
 
 pragma solidity ^0.8.0;
 
-import "bn254/Utils.sol";
+import { Utils } from "./Utils.sol";
 
 /// @notice Barreto-Naehrig curve over a 254 bit prime field
 library BN254 {
+    /// @notice type alias for BN254::ScalarField
+    type ScalarField is uint256;
+    /// @notice type alias for BN254::BaseField
+    type BaseField is uint256;
+
     // use notation from https://datatracker.ietf.org/doc/draft-irtf-cfrg-pairing-friendly-curves/
     //
     // Elliptic curve is defined over a prime field GF(p), with embedding degree k.
@@ -45,32 +50,32 @@ library BN254 {
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
 
     struct G1Point {
-        uint256 x;
-        uint256 y;
+        BaseField x;
+        BaseField y;
     }
 
     // G2 group element where x \in Fp2 = x0 * z + x1
     struct G2Point {
-        uint256 x0;
-        uint256 x1;
-        uint256 y0;
-        uint256 y1;
+        BaseField x0;
+        BaseField x1;
+        BaseField y0;
+        BaseField y1;
     }
 
     /// @return the generator of G1
     // solhint-disable-next-line func-name-mixedcase
     function P1() internal pure returns (G1Point memory) {
-        return G1Point(1, 2);
+        return G1Point(BaseField.wrap(1), BaseField.wrap(2));
     }
 
     /// @return the generator of G2
     // solhint-disable-next-line func-name-mixedcase
     function P2() internal pure returns (G2Point memory) {
         return G2Point({
-            x0: 0x198e9393920d483a7260bfb731fb5d25f1aa493335a9e71297e485b7aef312c2,
-            x1: 0x1800deef121f1e76426a00665e5c4479674322d4f75edadd46debd5cd992f6ed,
-            y0: 0x090689d0585ff075ec9e99ad690c3395bc4b313370b38ef355acdadcd122975b,
-            y1: 0x12c85ea5db8c6deb4aab71808dcb408fe3d1e7690c43d37b4ce6cc0166fa7daa
+            x0: BaseField.wrap(0x198e9393920d483a7260bfb731fb5d25f1aa493335a9e71297e485b7aef312c2),
+            x1: BaseField.wrap(0x1800deef121f1e76426a00665e5c4479674322d4f75edadd46debd5cd992f6ed),
+            y0: BaseField.wrap(0x090689d0585ff075ec9e99ad690c3395bc4b313370b38ef355acdadcd122975b),
+            y1: BaseField.wrap(0x12c85ea5db8c6deb4aab71808dcb408fe3d1e7690c43d37b4ce6cc0166fa7daa)
         });
     }
 
@@ -91,21 +96,21 @@ library BN254 {
         if (isInfinity(p)) {
             return p;
         }
-        return G1Point(p.x, P_MOD - (p.y % P_MOD));
+        return G1Point(p.x, BaseField.wrap(P_MOD - (BaseField.unwrap(p.y) % P_MOD)));
     }
 
     /// @return res = -fr the negation of scalar field element.
-    function negate(uint256 fr) internal pure returns (uint256 res) {
-        return R_MOD - (fr % R_MOD);
+    function negate(ScalarField fr) internal pure returns (ScalarField res) {
+        return ScalarField.wrap(R_MOD - (ScalarField.unwrap(fr) % R_MOD));
     }
 
     /// @return r the sum of two points of G1
     function add(G1Point memory p1, G1Point memory p2) internal view returns (G1Point memory r) {
         uint256[4] memory input;
-        input[0] = p1.x;
-        input[1] = p1.y;
-        input[2] = p2.x;
-        input[3] = p2.y;
+        input[0] = BaseField.unwrap(p1.x);
+        input[1] = BaseField.unwrap(p1.y);
+        input[2] = BaseField.unwrap(p2.x);
+        input[3] = BaseField.unwrap(p2.y);
         bool success;
         assembly {
             success := staticcall(sub(gas(), 2000), 6, input, 0xc0, r, 0x60)
@@ -118,11 +123,11 @@ library BN254 {
 
     /// @return r the product of a point on G1 and a scalar, i.e.
     /// p == p.mul(1) and p.add(p) == p.mul(2) for all points p.
-    function scalarMul(G1Point memory p, uint256 s) internal view returns (G1Point memory r) {
+    function scalarMul(G1Point memory p, ScalarField s) internal view returns (G1Point memory r) {
         uint256[3] memory input;
-        input[0] = p.x;
-        input[1] = p.y;
-        input[2] = s;
+        input[0] = BaseField.unwrap(p.x);
+        input[1] = BaseField.unwrap(p.y);
+        input[2] = ScalarField.unwrap(s);
         bool success;
         assembly {
             success := staticcall(sub(gas(), 2000), 7, input, 0x80, r, 0x60)
@@ -135,7 +140,7 @@ library BN254 {
 
     /// @dev Multi-scalar Mulitiplication (MSM)
     /// @return r = \Prod{B_i^s_i} where {s_i} are `scalars` and {B_i} are `bases`
-    function multiScalarMul(G1Point[] memory bases, uint256[] memory scalars)
+    function multiScalarMul(G1Point[] memory bases, ScalarField[] memory scalars)
         internal
         view
         returns (G1Point memory r)
@@ -150,7 +155,7 @@ library BN254 {
 
     /// @dev Compute f^-1 for f \in Fr scalar field
     /// @notice credit: Aztec, Spilsbury Holdings Ltd
-    function invert(uint256 fr) internal view returns (uint256 output) {
+    function invert(ScalarField fr) internal view returns (ScalarField output) {
         bool success;
         uint256 p = R_MOD;
         assembly {
@@ -195,7 +200,7 @@ library BN254 {
 
     /// @dev Validate scalar field, revert if invalid (namely if fr > r_mod).
     /// @notice Writing this inline instead of calling it might save gas.
-    function validateScalarField(uint256 fr) internal pure {
+    function validateScalarField(ScalarField fr) internal pure {
         bool isValid;
         assembly {
             isValid := lt(fr, R_MOD)
@@ -246,7 +251,7 @@ library BN254 {
 
     /// @dev Check if y-coordinate of G1 point is negative.
     function isYNegative(G1Point memory point) internal pure returns (bool) {
-        return (point.y << 1) < P_MOD;
+        return (BaseField.unwrap(point.y) << 1) < P_MOD;
     }
 
     // @dev Perform a modular exponentiation.
@@ -288,7 +293,7 @@ library BN254 {
             mask = 0x8000000000000000000000000000000000000000000000000000000000000000;
         }
 
-        return abi.encodePacked(Utils.reverseEndianness(point.x | mask));
+        return abi.encodePacked(Utils.reverseEndianness(BaseField.unwrap(point.x) | mask));
     }
 
     function g1Deserialize(bytes32 input) internal view returns (G1Point memory point) {
@@ -322,11 +327,11 @@ library BN254 {
             }
         }
 
-        point = G1Point(x, y);
+        point = G1Point(BaseField.wrap(x), BaseField.wrap(y));
     }
 
     function quadraticResidue(uint256 x)
-        internal
+        private
         view
         returns (bool isQuadraticResidue, uint256 a)
     {
