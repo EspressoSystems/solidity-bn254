@@ -13,7 +13,11 @@
   };
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs.rust-overlay.url = "github:oxalica/rust-overlay";
   inputs.flake-utils.url = "github:numtide/flake-utils";
+
+  inputs.fenix.url = "github:nix-community/fenix";
+  inputs.fenix.inputs.nixpkgs.follows = "nixpkgs";
 
   inputs.foundry.url = "github:shazow/foundry.nix"; # Use monthly branch for permanent releases
   inputs.solc-bin.url = "github:EspressoSystems/nix-solc-bin";
@@ -22,8 +26,10 @@
   outputs =
     { self
     , nixpkgs
+    , rust-overlay
     , flake-utils
     , pre-commit-hooks
+    , fenix
     , foundry
     , solc-bin
     , ...
@@ -31,12 +37,16 @@
     flake-utils.lib.eachDefaultSystem (system:
     let
       overlays = [
+        (import rust-overlay)
         foundry.overlay
         solc-bin.overlays.default
       ];
       pkgs = import nixpkgs {
         inherit system overlays;
       };
+      # Use a distinct target dir for builds from within nix shells.
+      CARGO_TARGET_DIR = "target/nix";
+      RUST_BACKTRACE = 1;
     in
     with pkgs;
     {
@@ -44,6 +54,28 @@
         pre-commit-check = pre-commit-hooks.lib.${system}.run {
           src = ./.;
           hooks = {
+            cargo-fmt = {
+              enable = true;
+              description = "Enforce rustfmt";
+              entry = "cargo fmt --all";
+              types_or = [ "rust" "toml" ];
+              pass_filenames = false;
+            };
+            cargo-sort = {
+              enable = true;
+              description = "Ensure Cargo.toml are sorted";
+              entry = "cargo sort -g -w";
+              types_or = [ "toml" ];
+              pass_filenames = false;
+            };
+            cargo-clippy = {
+              enable = true;
+              description = "Run clippy";
+              entry =
+                "cargo clippy --workspace --all-features --all-targets -- -D warnings";
+              types_or = [ "rust" "toml" ];
+              pass_filenames = false;
+            };
             forge-fmt = {
               enable = true;
               description = "Enforce forge fmt";
@@ -57,6 +89,9 @@
       };
       devShells.default =
         let
+          stableToolchain = pkgs.rust-bin.stable.latest.minimal.override {
+            extensions = [ "rustfmt" "clippy" "llvm-tools-preview" "rust-src" ];
+          };
           solc = pkgs.solc-bin.latest;
           nixWithFlakes = pkgs.writeShellScriptBin "nix" ''
             exec ${pkgs.nixFlakes}/bin/nix --experimental-features "nix-command flakes" "$@"
@@ -67,6 +102,14 @@
             buildInputs = [
               pkg-config
               coreutils
+              stableToolchain
+
+              # Rust tools
+              cargo-audit
+              cargo-edit
+              cargo-sort
+              just
+              fenix.packages.${system}.rust-analyzer
 
               foundry-bin
               solc
@@ -74,9 +117,12 @@
               nixpkgs-fmt
             ] ++ lib.optionals stdenv.isDarwin [ darwin.apple_sdk.frameworks.SystemConfiguration ];
             shellHook = ''
-              # Add shell hook here
+              export CARGO_HOME=$HOME/.cargo-nix
+              export PATH="$PWD/$CARGO_TARGET_DIR/release:$PATH"
             '' + self.checks.${system}.pre-commit-check.shellHook;
             FOUNDRY_SOLC = "${solc}/bin/solc";
+            RUST_SRC_PATH = "${stableToolchain}/lib/rustlib/src/rust/library";
+            inherit RUST_BACKTRACE CARGO_TARGET_DIR;
           };
     }
     );
