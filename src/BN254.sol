@@ -54,7 +54,7 @@ library BN254 {
         BaseField y;
     }
 
-    // G2 group element where x \in Fp2 = x0 * z + x1
+    // G2 group element where x \in Fp2 = c0 + c1 * X
     struct G2Point {
         BaseField x0;
         BaseField x1;
@@ -72,10 +72,10 @@ library BN254 {
     // solhint-disable-next-line func-name-mixedcase
     function P2() internal pure returns (G2Point memory) {
         return G2Point({
-            x0: BaseField.wrap(0x198e9393920d483a7260bfb731fb5d25f1aa493335a9e71297e485b7aef312c2),
-            x1: BaseField.wrap(0x1800deef121f1e76426a00665e5c4479674322d4f75edadd46debd5cd992f6ed),
-            y0: BaseField.wrap(0x090689d0585ff075ec9e99ad690c3395bc4b313370b38ef355acdadcd122975b),
-            y1: BaseField.wrap(0x12c85ea5db8c6deb4aab71808dcb408fe3d1e7690c43d37b4ce6cc0166fa7daa)
+            x0: BaseField.wrap(0x1800deef121f1e76426a00665e5c4479674322d4f75edadd46debd5cd992f6ed),
+            x1: BaseField.wrap(0x198e9393920d483a7260bfb731fb5d25f1aa493335a9e71297e485b7aef312c2),
+            y0: BaseField.wrap(0x12c85ea5db8c6deb4aab71808dcb408fe3d1e7690c43d37b4ce6cc0166fa7daa),
+            y1: BaseField.wrap(0x090689d0585ff075ec9e99ad690c3395bc4b313370b38ef355acdadcd122975b)
         });
     }
 
