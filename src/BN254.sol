@@ -79,6 +79,11 @@ library BN254 {
         });
     }
 
+    /// @notice the neutral/infinity point of G1
+    function infinity() internal pure returns (G1Point memory) {
+        return G1Point(BaseField.wrap(0), BaseField.wrap(0));
+    }
+
     /// @dev check if a G1 point is Infinity
     /// @notice precompile bn256Add at address(6) takes (0, 0) as Point of Infinity,
     /// some crypto libraries (such as arkwork) uses a boolean flag to mark PoI, and
@@ -104,6 +109,11 @@ library BN254 {
         return ScalarField.wrap(R_MOD - (ScalarField.unwrap(fr) % R_MOD));
     }
 
+    /// @notice res = -fq for base field
+    function negate(BaseField fq) internal pure returns (BaseField) {
+        return BaseField.wrap(P_MOD - (BaseField.unwrap(fq) % P_MOD));
+    }
+
     /// @return r the sum of two points of G1
     function add(G1Point memory p1, G1Point memory p2) internal view returns (G1Point memory r) {
         uint256[4] memory input;
@@ -119,6 +129,26 @@ library BN254 {
             case 0 { revert(0, 0) }
         }
         require(success, "Bn254: group addition failed!");
+    }
+
+    /// @notice add for BaseField
+    function add(BaseField a, BaseField b) internal pure returns (BaseField) {
+        return BaseField.wrap(addmod(BaseField.unwrap(a), BaseField.unwrap(b), P_MOD));
+    }
+
+    /// @notice add for ScalarField
+    function add(ScalarField a, ScalarField b) internal pure returns (ScalarField) {
+        return ScalarField.wrap(addmod(ScalarField.unwrap(a), ScalarField.unwrap(b), R_MOD));
+    }
+
+    /// @notice mul for BaseField
+    function mul(BaseField a, BaseField b) internal pure returns (BaseField) {
+        return BaseField.wrap(mulmod(BaseField.unwrap(a), BaseField.unwrap(b), P_MOD));
+    }
+
+    /// @notice mul for ScalarField
+    function mul(ScalarField a, ScalarField b) internal pure returns (ScalarField) {
+        return ScalarField.wrap(mulmod(ScalarField.unwrap(a), ScalarField.unwrap(b), R_MOD));
     }
 
     /// @return r the product of a point on G1 and a scalar, i.e.
@@ -298,44 +328,41 @@ library BN254 {
 
     function g1Deserialize(bytes32 input) internal view returns (G1Point memory point) {
         uint256 mask = 0x4000000000000000000000000000000000000000000000000000000000000000;
-        uint256 x = Utils.reverseEndianness(uint256(input));
-        uint256 y;
+        uint256 xVal = Utils.reverseEndianness(uint256(input));
         bool isQuadraticResidue;
         bool isYPositive;
-        if (x & mask != 0) {
+        if (xVal & mask != 0) {
             // the 254-th bit == 1 for infinity
-            x = 0;
-            y = 0;
+            point = infinity();
         } else {
             // Set the 255-th bit to 1 for positive Y
             mask = 0x8000000000000000000000000000000000000000000000000000000000000000;
-            isYPositive = (x & mask != 0);
+            isYPositive = (xVal & mask != 0);
             // mask off the first two bits of x
             mask = 0x3FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
-            x &= mask;
+            xVal &= mask;
 
             // solve for y where E: y^2 = x^3 + 3
-            y = mulmod(x, x, P_MOD);
-            y = mulmod(y, x, P_MOD);
-            y = addmod(y, 3, P_MOD);
+            BaseField x = BaseField.wrap(xVal);
+            BaseField y = add(mul(mul(x, x), x), BaseField.wrap(3));
             (isQuadraticResidue, y) = quadraticResidue(y);
 
             require(isQuadraticResidue, "deser fail: not on curve");
 
             if (isYPositive) {
-                y = P_MOD - y;
+                y = negate(y);
             }
+            point = G1Point(x, y);
         }
-
-        point = G1Point(BaseField.wrap(x), BaseField.wrap(y));
     }
 
-    function quadraticResidue(uint256 x)
-        private
+    function quadraticResidue(BaseField x)
+        internal
         view
-        returns (bool isQuadraticResidue, uint256 a)
+        returns (bool isQuadraticResidue, BaseField)
     {
         bool success;
+        uint256 a;
         // e = (p+1)/4
         uint256 e = 0xc19139cb84c680a6e14116da060561765e05aa45a1c72a34f082305b61f3f52;
         uint256 p = P_MOD;
@@ -364,6 +391,7 @@ library BN254 {
         // check if a^2 = x, if not x is not a quadratic residue
         e = mulmod(a, a, p);
 
-        isQuadraticResidue = (e == x);
+        isQuadraticResidue = (e == BaseField.unwrap(x));
+        return (isQuadraticResidue, BaseField.wrap(a));
     }
 }
