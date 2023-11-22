@@ -16,7 +16,7 @@
   inputs.rust-overlay.url = "github:oxalica/rust-overlay";
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
-  inputs.foundry.url = "github:shazow/foundry.nix"; # Use monthly branch for permanent releases
+  inputs.foundry.url = "github:shazow/foundry.nix/monthly"; # Use monthly branch for permanent releases
   inputs.solc-bin.url = "github:EspressoSystems/nix-solc-bin";
   inputs.pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
 
