@@ -8,5 +8,6 @@ version = { workspace = true }
 ark-bn254 = { workspace = true }
 ark-ec = { workspace = true }
 ark-ff = { workspace = true }
+ark-std = { workspace = true }
 clap = { version = "^4.4", features = ["derive"] }
 ethers = { workspace = true }

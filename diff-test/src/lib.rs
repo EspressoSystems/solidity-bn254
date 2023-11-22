@@ -29,7 +29,7 @@ pub fn u256_to_field<F: PrimeField>(x: U256) -> F {
 
 /// an intermediate representation of `BN254.G1Point` in solidity.
 #[derive(Clone, PartialEq, Eq, Debug, EthAbiType, EthAbiCodec)]
-struct ParsedG1Point {
+pub struct ParsedG1Point {
     x: U256,
     y: U256,
 }

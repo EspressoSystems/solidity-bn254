@@ -239,9 +239,10 @@ library BN254 {
     }
 
     /// @dev Evaluate the following pairing product:
-    /// @dev e(a1, a2).e(-b1, b2) == 1
+    /// @dev e(a1, a2).e(b1, b2) == 1
+    /// @dev equality holds for e(a1, a2) == e(-b1, b2) (NOTE: input `b1`=-b1)
     /// @dev caller needs to ensure that a1, a2, b1 and b2 are within proper group
-    /// @notice credit: Aztec, Spilsbury Holdings Ltd
+    /// @dev Modified from original credit: Aztec, Spilsbury Holdings Ltd
     function pairingProd2(
         G1Point memory a1,
         G2Point memory a2,
@@ -254,17 +255,17 @@ library BN254 {
             let mPtr := mload(0x40)
             mstore(mPtr, mload(a1))
             mstore(add(mPtr, 0x20), mload(add(a1, 0x20)))
-            mstore(add(mPtr, 0x40), mload(a2))
-            mstore(add(mPtr, 0x60), mload(add(a2, 0x20)))
-            mstore(add(mPtr, 0x80), mload(add(a2, 0x40)))
-            mstore(add(mPtr, 0xa0), mload(add(a2, 0x60)))
+            mstore(add(mPtr, 0x40), mload(add(a2, 0x20)))
+            mstore(add(mPtr, 0x60), mload(a2))
+            mstore(add(mPtr, 0x80), mload(add(a2, 0x60)))
+            mstore(add(mPtr, 0xa0), mload(add(a2, 0x40)))
 
             mstore(add(mPtr, 0xc0), mload(b1))
             mstore(add(mPtr, 0xe0), mload(add(b1, 0x20)))
-            mstore(add(mPtr, 0x100), mload(b2))
-            mstore(add(mPtr, 0x120), mload(add(b2, 0x20)))
-            mstore(add(mPtr, 0x140), mload(add(b2, 0x40)))
-            mstore(add(mPtr, 0x160), mload(add(b2, 0x60)))
+            mstore(add(mPtr, 0x100), mload(add(b2, 0x20)))
+            mstore(add(mPtr, 0x120), mload(b2))
+            mstore(add(mPtr, 0x140), mload(add(b2, 0x60)))
+            mstore(add(mPtr, 0x160), mload(add(b2, 0x40)))
             success := staticcall(gas(), 8, mPtr, 0x180, 0x00, 0x20)
             out := mload(0x00)
         }

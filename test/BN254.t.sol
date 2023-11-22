@@ -32,7 +32,7 @@ contract BN254CommonTest is Test {
 contract BN254_P2_Test is BN254CommonTest {
     /// @dev Test if the G2 generator matches with arkworks
     function test_p2_matches() external {
-        string[] memory cmds = new string[](3);
+        string[] memory cmds = new string[](2);
         cmds[0] = "diff-test";
         cmds[1] = "bn254-g2-gen";
 
@@ -40,5 +40,32 @@ contract BN254_P2_Test is BN254CommonTest {
         (BN254.G2Point memory g2Gen) = abi.decode(result, (BN254.G2Point));
 
         assertEqG2Point(BN254.P2(), g2Gen);
+    }
+}
+
+contract BN254_pairingProd2_Test is BN254CommonTest {
+    /// @dev Test pairingProd2 function with random G1, G2 pairs,
+    /// fuzzer only generate random seed, actual random pairs are generated in diff-test
+    function testFuzz_pairingProd2_matches(uint64 seed) external {
+        string[] memory cmds = new string[](3);
+        cmds[0] = "diff-test";
+        cmds[1] = "bn254-pairing-prod2";
+        cmds[2] = vm.toString(seed);
+
+        bytes memory result = vm.ffi(cmds);
+        (
+            BN254.G1Point memory a1,
+            BN254.G2Point memory a2,
+            BN254.G1Point memory b1,
+            BN254.G2Point memory b2
+        ) = abi.decode(result, (BN254.G1Point, BN254.G2Point, BN254.G1Point, BN254.G2Point));
+
+        // when seed % 2 == 1, diff-test will generate pairs that satisfy the pairing product
+        // else it will generate unsatisyfing pairs
+        if (seed % 2 == 0) {
+            assert(!BN254.pairingProd2(a1, a2, b1, b2));
+        } else {
+            assert(BN254.pairingProd2(a1, a2, b1, b2));
+        }
     }
 }
