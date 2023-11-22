@@ -1,34 +1,52 @@
 name: test
 
-on: workflow_dispatch
+on:
+  push:
+    branches:
+      - main
+      - release-*
+    tags:
+      # YYYYMMDD
+      - "20[0-9][0-9][0-1][0-9][0-3][0-9]*"
+  pull_request:
+    branches:
+  workflow_dispatch:
 
 env:
   FOUNDRY_PROFILE: ci
 
 jobs:
-  check:
-    strategy:
-      fail-fast: true
-
-    name: Foundry project
+  contracts:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Install Nix
+        uses: cachix/install-nix-action@v23
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
+      - uses: Swatinem/rust-cache@v2
+        name: Enable Rust Caching
         with:
-          version: nightly
+          prefix-key: v1-rust
 
-      - name: Run Forge build
+      - name: Check forge version
         run: |
-          forge --version
-          forge build --sizes
-        id: build
+          nix develop --accept-flake-config -c which forge
+          nix develop --accept-flake-config -c forge --version
 
-      - name: Run Forge tests
+      - name: Format check
+        run: nix develop --accept-flake-config -c pre-commit run forge-fmt --all-files
+
+      - name: Build non-test contracts without warnings
+        run: nix develop --accept-flake-config -c forge build --skip test --deny-warnings
+
+      - name: Build all contracts
+        run: nix develop --accept-flake-config -c forge build
+
+      - name: Run tests
         run: |
-          forge test -vvv
-        id: test
+          nix develop --accept-flake-config -c cargo build --bin diff-test --release
+          nix develop --accept-flake-config -c forge test -vvv
