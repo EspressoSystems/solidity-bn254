@@ -5,9 +5,9 @@ use ark_std::{
     UniformRand,
 };
 use clap::{Parser, ValueEnum};
-use ethers::abi::AbiEncode;
+use ethers::{abi::AbiEncode, types::U256};
 
-use diff_test::{ParsedG1Point, ParsedG2Point};
+use diff_test::{u256_to_field, ParsedG1Point, ParsedG2Point};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about=None)]
@@ -24,6 +24,10 @@ struct Cli {
 enum Action {
     /// Get BN254's G2 generator in arkworks
     Bn254G2Gen,
+    /// Compute the g1 points = generator ^ scalar.
+    Bn254G1FromScalar,
+    /// Test if a G1 Point is on curve
+    Bn254G1IsOnCurve,
     /// Generate two pairs of (G1, G2) to test pairingProd2
     Bn254PairingProd2,
     /// Test only logic
@@ -37,6 +41,23 @@ fn main() {
             let p = ark_bn254::G2Affine::generator();
             let parsed_p: ParsedG2Point = p.into();
             println!("{}", (parsed_p,).encode_hex());
+        }
+        Action::Bn254G1FromScalar => {
+            if cli.args.len() != 1 {
+                panic!("Should provide arg1=scalar");
+            }
+
+            let s: Fr = u256_to_field(cli.args[0].parse::<U256>().unwrap());
+            let res: ParsedG1Point = (G1Affine::generator() * s).into_affine().into();
+            println!("{}", (res,).encode_hex());
+        }
+        Action::Bn254G1IsOnCurve => {
+            if cli.args.len() != 1 {
+                panic!("Should provide arg1=point");
+            }
+            let point: G1Affine = cli.args[0].parse::<ParsedG1Point>().unwrap().into();
+            let is_on_curve = point.is_on_curve();
+            println!("{}", (is_on_curve,).encode_hex());
         }
         Action::Bn254PairingProd2 => {
             if cli.args.len() != 1 {

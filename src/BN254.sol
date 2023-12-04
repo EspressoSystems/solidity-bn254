@@ -204,24 +204,25 @@ library BN254 {
 
     /**
      * validate the following:
-     *   x != 0
-     *   y != 0
      *   x < p
      *   y < p
-     *   y^2 = x^3 + 3 mod p
+     *   y^2 = x^3 + 3 mod p or Point-of-Infinity
      */
     /// @dev validate G1 point and check if it is on curve
     /// @notice credit: Aztec, Spilsbury Holdings Ltd
     function validateG1Point(G1Point memory point) internal pure {
         bool isWellFormed;
         uint256 p = P_MOD;
+        if (isInfinity(point)) {
+            return;
+        }
         assembly {
             let x := mload(point)
             let y := mload(add(point, 0x20))
 
             isWellFormed :=
                 and(
-                    and(and(lt(x, p), lt(y, p)), not(or(iszero(x), iszero(y)))),
+                    and(lt(x, p), lt(y, p)),
                     eq(mulmod(y, y, p), addmod(mulmod(x, mulmod(x, x, p), p), 3, p))
                 )
         }

@@ -80,7 +80,7 @@ where
         if p == ParsedG1Point::default() {
             Self::default()
         } else {
-            Self::new(
+            Self::new_unchecked(
                 u256_to_field::<P::BaseField>(p.x),
                 u256_to_field::<P::BaseField>(p.y),
             )
@@ -110,7 +110,7 @@ where
     C: Fp2Config,
 {
     fn from(p: ParsedG2Point) -> Self {
-        Self::new(
+        Self::new_unchecked(
             Fp2::new(u256_to_field(p.x0), u256_to_field(p.x1)),
             Fp2::new(u256_to_field(p.y0), u256_to_field(p.y1)),
         )
