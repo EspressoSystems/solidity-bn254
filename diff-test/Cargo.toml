@@ -1,5 +1,6 @@
 [package]
-name = "diff-test"
+name = "diff-test-bn254"
+description = "Structs, type conversion and differential test scripts for solidity-bn254"
 authors = { workspace = true }
 edition = { workspace = true }
 version = { workspace = true }

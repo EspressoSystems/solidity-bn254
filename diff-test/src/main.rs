@@ -7,7 +7,7 @@ use ark_std::{
 use clap::{Parser, ValueEnum};
 use ethers::{abi::AbiEncode, types::U256};
 
-use diff_test::{u256_to_field, ParsedG1Point, ParsedG2Point};
+use diff_test_bn254::{u256_to_field, ParsedG1Point, ParsedG2Point};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about=None)]

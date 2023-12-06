@@ -33,7 +33,7 @@ contract BN254_P2_Test is BN254CommonTest {
     /// @dev Test if the G2 generator matches with arkworks
     function test_p2_matches() external {
         string[] memory cmds = new string[](2);
-        cmds[0] = "diff-test";
+        cmds[0] = "diff-test-bn254";
         cmds[1] = "bn254-g2-gen";
 
         bytes memory result = vm.ffi(cmds);
@@ -67,7 +67,7 @@ contract BN254_scalarMul_Test is BN254CommonTest {
     /// @dev Test scalarMul matches results from arkworks
     function testFuzz_scalarMul_matches(uint256 randScalar) external {
         string[] memory cmds = new string[](3);
-        cmds[0] = "diff-test";
+        cmds[0] = "diff-test-bn254";
         cmds[1] = "bn254-g1-from-scalar";
         cmds[2] = vm.toString(bytes32(randScalar));
 
@@ -95,7 +95,7 @@ contract BN254_validateG1Point_Test is BN254CommonTest {
     /// @dev Test random valid points should pass
     function testFuzz_ValidPointShouldPass(uint256 randScalar) external {
         string[] memory cmds = new string[](3);
-        cmds[0] = "diff-test";
+        cmds[0] = "diff-test-bn254";
         cmds[1] = "bn254-g1-from-scalar";
         cmds[2] = vm.toString(bytes32(randScalar));
 
@@ -109,7 +109,7 @@ contract BN254_validateG1Point_Test is BN254CommonTest {
     /// @dev Test invalid points should cause revert
     function test_RevertWhenInvalidPoint(BN254.G1Point memory point) external {
         string[] memory cmds = new string[](3);
-        cmds[0] = "diff-test";
+        cmds[0] = "diff-test-bn254";
         cmds[1] = "bn254-g1-is-on-curve";
         cmds[2] = vm.toString(abi.encode(point));
 
@@ -125,10 +125,10 @@ contract BN254_validateG1Point_Test is BN254CommonTest {
 
 contract BN254_pairingProd2_Test is BN254CommonTest {
     /// @dev Test pairingProd2 function with random G1, G2 pairs,
-    /// fuzzer only generate random seed, actual random pairs are generated in diff-test
+    /// fuzzer only generate random seed, actual random pairs are generated in diff-test-bn254
     function testFuzz_pairingProd2_matches(uint64 seed) external {
         string[] memory cmds = new string[](3);
-        cmds[0] = "diff-test";
+        cmds[0] = "diff-test-bn254";
         cmds[1] = "bn254-pairing-prod2";
         cmds[2] = vm.toString(seed);
 
@@ -140,7 +140,7 @@ contract BN254_pairingProd2_Test is BN254CommonTest {
             BN254.G2Point memory b2
         ) = abi.decode(result, (BN254.G1Point, BN254.G2Point, BN254.G1Point, BN254.G2Point));
 
-        // when seed % 2 == 1, diff-test will generate pairs that satisfy the pairing product
+        // when seed % 2 == 1, diff-test-bn254 will generate pairs that satisfy the pairing product
         // else it will generate unsatisyfing pairs
         if (seed % 2 == 0) {
             assert(!BN254.pairingProd2(a1, a2, b1, b2));
