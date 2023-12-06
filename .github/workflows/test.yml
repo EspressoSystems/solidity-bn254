@@ -48,5 +48,5 @@ jobs:
 
       - name: Run tests
         run: |
-          nix develop --accept-flake-config -c cargo build --bin diff-test --release
+          nix develop --accept-flake-config -c cargo build --bin diff-test-bn254 --release
           nix develop --accept-flake-config -c forge test -vvv

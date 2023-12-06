@@ -30,8 +30,10 @@ pub fn u256_to_field<F: PrimeField>(x: U256) -> F {
 /// an intermediate representation of `BN254.G1Point` in solidity.
 #[derive(Clone, PartialEq, Eq, Debug, EthAbiType, EthAbiCodec)]
 pub struct ParsedG1Point {
-    x: U256,
-    y: U256,
+    /// x coordinate of affine repr
+    pub x: U256,
+    /// y coordinate of affine repr
+    pub y: U256,
 }
 
 // this is convention from BN256 precompile
@@ -91,10 +93,14 @@ where
 /// Intermediate representation of `G2Point` in Solidity
 #[derive(Clone, PartialEq, Eq, Debug, EthAbiType, EthAbiCodec)]
 pub struct ParsedG2Point {
-    x0: U256,
-    x1: U256,
-    y0: U256,
-    y1: U256,
+    /// x0 of x = x0 + u * x1 coordinate
+    pub x0: U256,
+    /// x1 of x = x0 + u * x1 coordinate
+    pub x1: U256,
+    /// y0 of y = y0 + u * y1 coordinate
+    pub y0: U256,
+    /// y1 of y = y0 + u * y1 coordinate
+    pub y1: U256,
 }
 
 impl FromStr for ParsedG2Point {
