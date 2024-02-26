@@ -1,0 +1,7 @@
+BN254_P2_Test:test_p2_matches() (gas: 5766)
+BN254_pairingProd2_Test:testFuzz_pairingProd2_matches(uint64) (runs: 256, μ: 121718, ~: 121712)
+BN254_scalarMul_Test:testFuzz_scalarMul_matches(uint256) (runs: 256, μ: 13439, ~: 13439)
+BN254_scalarMul_Test:test_EdgeCases() (gas: 34629)
+BN254_validateG1Point_Test:testFuzz_ValidPointShouldPass(uint256) (runs: 256, μ: 7040, ~: 7048)
+BN254_validateG1Point_Test:test_EdgeCases() (gas: 1736)
+BN254_validateG1Point_Test:test_RevertWhenInvalidPoint((uint256,uint256)) (runs: 256, μ: 8396, ~: 8396)
