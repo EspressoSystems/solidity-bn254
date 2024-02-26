@@ -281,6 +281,152 @@ library BN254 {
         }
     }
 
+    function fromLeBytesModOrder48(bytes memory leBytes) internal pure returns (uint256 ret) {
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 0])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 1])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 2])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 3])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 4])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 5])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 6])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 7])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 8])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 9])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 10])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 11])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 12])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 13])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 14])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 15])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 16])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 17])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 18])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 19])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 20])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 21])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 22])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 23])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 24])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 25])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 26])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 27])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 28])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 29])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 30])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 31])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 32])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 33])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 34])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 35])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 36])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 37])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 38])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 39])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 40])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 41])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 42])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 43])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 44])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 45])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 46])), R_MOD);
+
+        ret = mulmod(ret, 256, R_MOD);
+        ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - 47])), R_MOD);
+    }
+
     /// @dev Check if y-coordinate of G1 point is negative.
     function isYNegative(G1Point memory point) internal pure returns (bool) {
         return (BaseField.unwrap(point.y) << 1) < P_MOD;
