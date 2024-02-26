@@ -286,6 +286,11 @@ library BN254 {
         return (BaseField.unwrap(point.y) << 1) < P_MOD;
     }
 
+    /// @dev Check if y-coordinate of G1 point is positive.
+    function isYPositive(G1Point memory point) internal pure returns (bool) {
+        return (BaseField.unwrap(point.y) << 1) >= P_MOD;
+    }
+
     // @dev Perform a modular exponentiation.
     // @return base^exponent (mod modulus)
     // This method is ideal for small exponents (~64 bits or less), as it is cheaper than using the pow precompile
@@ -321,7 +326,7 @@ library BN254 {
 
         // Set the 255-th bit to 1 for positive Y
         // https://docs.rs/ark-serialize/0.3.0/src/ark_serialize/flags.rs.html#118
-        if (!isYNegative(point)) {
+        if (isYPositive(point)) {
             mask = 0x8000000000000000000000000000000000000000000000000000000000000000;
         }
 
