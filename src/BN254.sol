@@ -483,14 +483,14 @@ library BN254 {
         uint256 mask = 0x4000000000000000000000000000000000000000000000000000000000000000;
         uint256 xVal = Utils.reverseEndianness(uint256(input));
         bool isQuadraticResidue;
-        bool isYPositive;
+        bool isYPositiveVar;
         if (xVal & mask != 0) {
             // the 254-th bit == 1 for infinity
             point = infinity();
         } else {
             // Set the 255-th bit to 1 for positive Y
             mask = 0x8000000000000000000000000000000000000000000000000000000000000000;
-            isYPositive = (xVal & mask != 0);
+            isYPositiveVar = (xVal & mask != 0);
             // mask off the first two bits of x
             mask = 0x3FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
             xVal &= mask;
@@ -502,7 +502,7 @@ library BN254 {
 
             require(isQuadraticResidue, "deser fail: not on curve");
 
-            if (isYPositive) {
+            if (isYPositiveVar) {
                 y = negate(y);
             }
             point = G1Point(x, y);
