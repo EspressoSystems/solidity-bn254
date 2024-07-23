@@ -186,6 +186,7 @@ library BN254 {
     /// @dev Compute f^-1 for f \in Fr scalar field
     /// @notice credit: Aztec, Spilsbury Holdings Ltd
     function invert(ScalarField fr) internal view returns (ScalarField output) {
+        require((ScalarField.unwrap(fr) != 0), "Bn254: cannot compute the inverse of 0");
         bool success;
         uint256 p = R_MOD;
         assembly {

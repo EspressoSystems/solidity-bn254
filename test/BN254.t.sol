@@ -149,3 +149,10 @@ contract BN254_pairingProd2_Test is BN254CommonTest {
         }
     }
 }
+
+contract BN254_scalarField_Test is Test {
+    function testInvertOnZero() external {
+        vm.expectRevert("Bn254: cannot compute the inverse of 0");
+        BN254.invert(BN254.ScalarField.wrap(0));
+    }
+}
