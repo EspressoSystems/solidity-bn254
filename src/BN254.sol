@@ -318,7 +318,7 @@ library BN254 {
         // Set the 254-th bit to 1 for infinity
         // https://docs.rs/ark-serialize/0.3.0/src/ark_serialize/flags.rs.html#117
         if (isInfinity(point)) {
-            mask |= 0x4000000000000000000000000000000000000000000000000000000000000000;
+            return bytes("0x4000000000000000000000000000000000000000000000000000000000000000");
         }
 
         // Set the 255-th bit to 1 for positive Y
