@@ -315,6 +315,7 @@ library BN254 {
         return result;
     }
 
+    // TODO: remove endian conversion in <https://github.com/EspressoSystems/espresso-sequencer/issues/1739>
     function g1Serialize(G1Point memory point) internal pure returns (bytes memory) {
         uint256 mask = 0;
 
@@ -333,8 +334,13 @@ library BN254 {
         return abi.encodePacked(Utils.reverseEndianness(BaseField.unwrap(point.x) | mask));
     }
 
+    /// @dev for big endian u256 input, the first two leading bits (255-th and 254-th)
+    /// 00: negativeY; 10: positiveY; 01/11: infinity
+    /// for the remaining 254-bit value, canonical representation refers to the smallest
+    /// non-negative integer for every field element.
     function g1Deserialize(bytes32 input) internal view returns (G1Point memory point) {
         uint256 mask = 0x4000000000000000000000000000000000000000000000000000000000000000;
+        // TODO: remove endian conversion in <https://github.com/EspressoSystems/espresso-sequencer/issues/1739>
         uint256 xVal = Utils.reverseEndianness(uint256(input));
         bool isQuadraticResidue;
         bool isYPositive;
@@ -348,6 +354,8 @@ library BN254 {
             // mask off the first two bits of x
             mask = 0x3FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
             xVal &= mask;
+
+            require(xVal < P_MOD, "deser fail: non-canonical repr");
 
             // solve for y where E: y^2 = x^3 + 3
             BaseField x = BaseField.wrap(xVal);
