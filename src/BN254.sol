@@ -96,22 +96,25 @@ library BN254 {
         }
     }
 
+    /// @dev assume input G1Point is canonical
     /// @return r the negation of p, i.e. p.add(p.negate()) should be zero.
     function negate(G1Point memory p) internal pure returns (G1Point memory) {
         if (isInfinity(p)) {
             return p;
         }
-        return G1Point(p.x, BaseField.wrap(P_MOD - (BaseField.unwrap(p.y) % P_MOD)));
+        return G1Point(p.x, negate(p.y));
     }
 
+    /// @dev assume input ScalarField is canonical
     /// @return res = -fr the negation of scalar field element.
     function negate(ScalarField fr) internal pure returns (ScalarField res) {
-        return ScalarField.wrap(R_MOD - (ScalarField.unwrap(fr) % R_MOD));
+        return ScalarField.wrap(R_MOD - ScalarField.unwrap(fr));
     }
 
+    /// @dev assume input BaseField is canonical
     /// @notice res = -fq for base field
     function negate(BaseField fq) internal pure returns (BaseField) {
-        return BaseField.wrap(P_MOD - (BaseField.unwrap(fq) % P_MOD));
+        return BaseField.wrap(P_MOD - BaseField.unwrap(fq));
     }
 
     /// @return r the sum of two points of G1
