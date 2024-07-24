@@ -78,6 +78,31 @@ contract BN254_scalarMul_Test is BN254CommonTest {
     }
 }
 
+contract BN254_multiScalarMul_Test is BN254CommonTest {
+    function test_revertWhenEmptyArray() external {
+        BN254.G1Point[] memory bases;
+        BN254.ScalarField[] memory scalars;
+        assert(bases.length == 0 && scalars.length == 0);
+        vm.expectRevert("MSM err: empty bases/scalars");
+        BN254.multiScalarMul(bases, scalars);
+    }
+
+    function test_msm() external {
+        uint64 numBases = 5;
+
+        string[] memory cmds = new string[](3);
+        cmds[0] = "diff-test-bn254";
+        cmds[1] = "bn254-msm";
+        cmds[2] = vm.toString(numBases);
+
+        bytes memory result = vm.ffi(cmds);
+        (BN254.G1Point[] memory bases, BN254.ScalarField[] memory scalars, BN254.G1Point memory res)
+        = abi.decode(result, (BN254.G1Point[], BN254.ScalarField[], BN254.G1Point));
+
+        assertEqG1Point(res, BN254.multiScalarMul(bases, scalars));
+    }
+}
+
 contract BN254_validateG1Point_Test is BN254CommonTest {
     /// @dev Test some valid edge-case points
     function test_EdgeCases() external pure {

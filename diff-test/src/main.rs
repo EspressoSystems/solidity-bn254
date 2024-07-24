@@ -1,13 +1,13 @@
 use ark_bn254::{Bn254, Fr, G1Affine, G2Affine};
-use ark_ec::{pairing::Pairing, AffineRepr, CurveGroup, Group};
+use ark_ec::{pairing::Pairing, short_weierstrass::SWCurveConfig, AffineRepr, CurveGroup, Group};
 use ark_std::{
     rand::{rngs::StdRng, SeedableRng},
-    UniformRand,
+    test_rng, UniformRand,
 };
 use clap::{Parser, ValueEnum};
 use ethers::{abi::AbiEncode, types::U256};
 
-use diff_test_bn254::{u256_to_field, ParsedG1Point, ParsedG2Point};
+use diff_test_bn254::{field_to_u256, u256_to_field, ParsedG1Point, ParsedG2Point};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about=None)]
@@ -30,6 +30,8 @@ enum Action {
     Bn254G1IsOnCurve,
     /// Generate two pairs of (G1, G2) to test pairingProd2
     Bn254PairingProd2,
+    /// Generate bases and scalars for MSM computation
+    Bn254MSM,
     /// Test only logic
     TestOnly,
 }
@@ -91,6 +93,28 @@ fn main() {
             let parsed_b_1: ParsedG1Point = (-b_1).into_affine().into();
             let parsed_b_2: ParsedG2Point = b_2.into_affine().into();
             let res = (parsed_a_1, parsed_a_2, parsed_b_1, parsed_b_2);
+            println!("{}", res.encode_hex());
+        }
+        Action::Bn254MSM => {
+            if cli.args.len() != 1 {
+                panic!("Should provide arg1=numBases");
+            }
+            let num_bases = cli.args[0].parse::<u64>().unwrap();
+
+            let mut rng = test_rng();
+            let mut bases = vec![];
+            let mut scalars = vec![];
+            for _ in 0..num_bases {
+                bases.push(G1Affine::rand(&mut rng));
+                scalars.push(Fr::rand(&mut rng));
+            }
+            let prod = ark_bn254::g1::Config::msm(&bases, &scalars).unwrap();
+
+            let parsed_bases: Vec<ParsedG1Point> = bases.iter().map(|b| (*b).into()).collect();
+            let parsed_scalars: Vec<U256> = scalars.iter().map(|s| field_to_u256(*s)).collect();
+            let parsed_prod: ParsedG1Point = prod.into_affine().into();
+
+            let res = (parsed_bases, parsed_scalars, parsed_prod);
             println!("{}", res.encode_hex());
         }
         Action::TestOnly => {

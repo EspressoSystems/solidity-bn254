@@ -175,7 +175,8 @@ library BN254 {
         view
         returns (G1Point memory r)
     {
-        require(scalars.length == bases.length, "MSM error: length does not match");
+        require(scalars.length == bases.length, "MSM err: length does not match");
+        require(bases.length > 0, "MSM err: empty bases/scalars");
 
         r = scalarMul(bases[0], scalars[0]);
         for (uint256 i = 1; i < scalars.length; i++) {
