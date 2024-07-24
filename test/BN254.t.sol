@@ -167,6 +167,16 @@ contract BN254_serde_Test is BN254CommonTest {
         // change to non-canonical representation
         p1.x = BN254.BaseField.wrap(1 + BN254.P_MOD);
 
+        // non-canonical representation is still valid and onCurve
+        string[] memory cmds = new string[](3);
+        cmds[0] = "diff-test-bn254";
+        cmds[1] = "bn254-g1-is-on-curve";
+        cmds[2] = vm.toString(abi.encode(p1));
+        bytes memory result = vm.ffi(cmds);
+        (bool isOnCurve) = abi.decode(result, (bool));
+        assert(isOnCurve);
+
+        // but should fail our deserialization
         vm.expectRevert("deser fail: non-canonical repr");
         BN254.g1Deserialize(bytes32(BN254.g1Serialize(p1)));
     }
