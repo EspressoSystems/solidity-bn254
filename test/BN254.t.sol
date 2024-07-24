@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 
 // Target contract
 import { BN254 } from "../src/BN254.sol";
+import { Utils } from "../src/Utils.sol";
 
 contract BN254CommonTest is Test {
     using BN254 for BN254.BaseField;
@@ -154,5 +155,19 @@ contract BN254_scalarField_Test is Test {
     function testInvertOnZero() external {
         vm.expectRevert("Bn254: cannot compute the inverse of 0");
         BN254.invert(BN254.ScalarField.wrap(0));
+    }
+}
+
+contract BN254_serde_Test is BN254CommonTest {
+    /// @dev Test that only canonical representation of x coordinate is accepted
+    // TODO: update logic after <https://github.com/EspressoSystems/espresso-sequencer/issues/1739>
+    function testCanonicalDeserialization() external {
+        BN254.G1Point memory p1 = BN254.P1();
+        assertEqG1Point(p1, BN254.g1Deserialize(bytes32(BN254.g1Serialize(p1))));
+        // change to non-canonical representation
+        p1.x = BN254.BaseField.wrap(1 + BN254.P_MOD);
+
+        vm.expectRevert("deser fail: non-canonical repr");
+        BN254.g1Deserialize(bytes32(BN254.g1Serialize(p1)));
     }
 }
