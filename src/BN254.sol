@@ -315,14 +315,14 @@ library BN254 {
         return result;
     }
 
-    // TODO: remove endian conversion in <https://github.com/EspressoSystems/espresso-sequencer/issues/1739>
-    function g1Serialize(G1Point memory point) internal pure returns (bytes memory) {
+    /// @dev Serialize G1 point, compressed, big-endian form
+    function g1Serialize(G1Point memory point) internal pure returns (bytes32) {
         uint256 mask = 0;
 
         // Set the 254-th bit to 1 for infinity
         // https://docs.rs/ark-serialize/0.3.0/src/ark_serialize/flags.rs.html#117
         if (isInfinity(point)) {
-            return bytes("0x4000000000000000000000000000000000000000000000000000000000000000");
+            return bytes32(0x4000000000000000000000000000000000000000000000000000000000000000);
         }
 
         // Set the 255-th bit to 1 for positive Y
@@ -331,7 +331,7 @@ library BN254 {
             mask = 0x8000000000000000000000000000000000000000000000000000000000000000;
         }
 
-        return abi.encodePacked(Utils.reverseEndianness(BaseField.unwrap(point.x) | mask));
+        return bytes32(BaseField.unwrap(point.x) | mask);
     }
 
     /// @dev for big endian u256 input, the first two leading bits (255-th and 254-th)
@@ -340,8 +340,7 @@ library BN254 {
     /// non-negative integer for every field element.
     function g1Deserialize(bytes32 input) internal view returns (G1Point memory point) {
         uint256 mask = 0x4000000000000000000000000000000000000000000000000000000000000000;
-        // TODO: remove endian conversion in <https://github.com/EspressoSystems/espresso-sequencer/issues/1739>
-        uint256 xVal = Utils.reverseEndianness(uint256(input));
+        uint256 xVal = uint256(input);
         bool isQuadraticResidue;
         bool isYPositive;
         if (xVal & mask != 0) {

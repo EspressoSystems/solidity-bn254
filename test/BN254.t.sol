@@ -205,4 +205,17 @@ contract BN254_serde_Test is BN254CommonTest {
         vm.expectRevert("deser fail: non-canonical repr");
         BN254.g1Deserialize(bytes32(BN254.g1Serialize(p1)));
     }
+
+    /// @dev Test correctness: deser(ser(x)) == x
+    function testFuzz_ShouldDeserializeToSerializedPoint(uint256 randScalar) external {
+        string[] memory cmds = new string[](3);
+        cmds[0] = "diff-test-bn254";
+        cmds[1] = "bn254-g1-from-scalar";
+        cmds[2] = vm.toString(bytes32(randScalar));
+
+        bytes memory result = vm.ffi(cmds);
+        (BN254.G1Point memory point) = abi.decode(result, (BN254.G1Point));
+
+        assertEqG1Point(point, BN254.g1Deserialize(bytes32(BN254.g1Serialize(point))));
+    }
 }
