@@ -127,9 +127,6 @@ library BN254 {
         bool success;
         assembly {
             success := staticcall(sub(gas(), 2000), 6, input, 0xc0, r, 0x60)
-            // Use "invalid" to make gas estimation work
-            switch success
-            case 0 { revert(0, 0) }
         }
         require(success, "Bn254: group addition failed!");
     }
@@ -164,9 +161,6 @@ library BN254 {
         bool success;
         assembly {
             success := staticcall(sub(gas(), 2000), 7, input, 0x80, r, 0x60)
-            // Use "invalid" to make gas estimation work
-            switch success
-            case 0 { revert(0, 0) }
         }
         require(success, "Bn254: scalar mul failed!");
     }
