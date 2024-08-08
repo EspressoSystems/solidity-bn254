@@ -126,10 +126,7 @@ library BN254 {
         input[3] = BaseField.unwrap(p2.y);
         bool success;
         assembly {
-            success := staticcall(sub(gas(), 2000), 6, input, 0xc0, r, 0x60)
-            // Use "invalid" to make gas estimation work
-            switch success
-            case 0 { revert(0, 0) }
+            success := staticcall(gas(), 6, input, 0x80, r, 0x40)
         }
         require(success, "Bn254: group addition failed!");
     }
@@ -163,10 +160,7 @@ library BN254 {
         input[2] = ScalarField.unwrap(s);
         bool success;
         assembly {
-            success := staticcall(sub(gas(), 2000), 7, input, 0x80, r, 0x60)
-            // Use "invalid" to make gas estimation work
-            switch success
-            case 0 { revert(0, 0) }
+            success := staticcall(gas(), 7, input, 0x60, r, 0x40)
         }
         require(success, "Bn254: scalar mul failed!");
     }
