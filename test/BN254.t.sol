@@ -188,7 +188,7 @@ contract BN254_serde_Test is BN254CommonTest {
     // TODO: update logic after <https://github.com/EspressoSystems/espresso-sequencer/issues/1739>
     function testCanonicalDeserialization() external {
         BN254.G1Point memory p1 = BN254.P1();
-        assertEqG1Point(p1, BN254.g1Deserialize(bytes32(BN254.g1Serialize(p1))));
+        assertEqG1Point(p1, BN254.g1Deserialize(BN254.g1Serialize(p1)));
         // change to non-canonical representation
         p1.x = BN254.BaseField.wrap(1 + BN254.P_MOD);
 
@@ -203,6 +203,19 @@ contract BN254_serde_Test is BN254CommonTest {
 
         // but should fail our deserialization
         vm.expectRevert("deser fail: non-canonical repr");
-        BN254.g1Deserialize(bytes32(BN254.g1Serialize(p1)));
+        BN254.g1Deserialize(BN254.g1Serialize(p1));
+    }
+
+    /// @dev Test correctness: deser(ser(x)) == x
+    function testFuzz_ShouldDeserializeToSerializedPoint(uint256 randScalar) external {
+        string[] memory cmds = new string[](3);
+        cmds[0] = "diff-test-bn254";
+        cmds[1] = "bn254-g1-from-scalar";
+        cmds[2] = vm.toString(bytes32(randScalar));
+
+        bytes memory result = vm.ffi(cmds);
+        (BN254.G1Point memory point) = abi.decode(result, (BN254.G1Point));
+
+        assertEqG1Point(point, BN254.g1Deserialize(BN254.g1Serialize(point)));
     }
 }
