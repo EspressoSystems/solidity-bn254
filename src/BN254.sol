@@ -309,14 +309,15 @@ library BN254 {
         return result;
     }
 
-    // TODO: remove endian conversion in <https://github.com/EspressoSystems/espresso-sequencer/issues/1739>
+    /// @dev Correspond to arkworks' `CanonicalSerialize::serialize_compressed()`
+    /// using little-endian, compressed form.
     function g1Serialize(G1Point memory point) internal pure returns (bytes32) {
         uint256 mask = 0;
 
         // Set the 254-th bit to 1 for infinity
         // https://docs.rs/ark-serialize/0.3.0/src/ark_serialize/flags.rs.html#117
         if (isInfinity(point)) {
-            return 0x4000000000000000000000000000000000000000000000000000000000000000;
+            return 0x0000000000000000000000000000000000000000000000000000000000000040;
         }
 
         // Set the 255-th bit to 1 for positive Y
@@ -328,26 +329,23 @@ library BN254 {
         return bytes32(Utils.reverseEndianness(BaseField.unwrap(point.x) | mask));
     }
 
-    /// @dev for big endian u256 input, the first two leading bits (255-th and 254-th)
+    /// @dev the first two leading bits (255-th and 254-th)
     /// 00: negativeY; 10: positiveY; 01/11: infinity
     /// for the remaining 254-bit value, canonical representation refers to the smallest
     /// non-negative integer for every field element.
     function g1Deserialize(bytes32 input) internal view returns (G1Point memory point) {
-        uint256 mask = 0x4000000000000000000000000000000000000000000000000000000000000000;
-        // TODO: remove endian conversion in <https://github.com/EspressoSystems/espresso-sequencer/issues/1739>
-        uint256 xVal = Utils.reverseEndianness(uint256(input));
         bool isQuadraticResidue;
         bool isYPositive;
-        if (xVal & mask != 0) {
+        if (input == 0x0000000000000000000000000000000000000000000000000000000000000040) {
             // the 254-th bit == 1 for infinity
             point = infinity();
         } else {
+            uint256 xVal = Utils.reverseEndianness(uint256(input));
             // Set the 255-th bit to 1 for positive Y
-            mask = 0x8000000000000000000000000000000000000000000000000000000000000000;
-            isYPositive = (xVal & mask != 0);
+            isYPositive =
+                (xVal & 0x8000000000000000000000000000000000000000000000000000000000000000 != 0);
             // mask off the first two bits of x
-            mask = 0x3FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
-            xVal &= mask;
+            xVal &= 0x3FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
 
             require(xVal < P_MOD, "deser fail: non-canonical repr");
 
