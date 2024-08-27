@@ -17,6 +17,9 @@ pragma solidity ^0.8.0;
 import { Utils } from "./Utils.sol";
 
 /// @notice Barreto-Naehrig curve over a 254 bit prime field
+///
+/// @dev all functions (except `validateG1Point` and `validateScalarField`) that take a typed argument should assume its representation to be canonical;
+/// and ensure that any field elements returned are also canonically represented.
 library BN254 {
     /// @notice type alias for BN254::ScalarField
     type ScalarField is uint256;
@@ -329,8 +332,11 @@ library BN254 {
         return bytes32(Utils.reverseEndianness(BaseField.unwrap(point.x) | mask));
     }
 
-    /// @dev the first two leading bits (255-th and 254-th)
-    /// 00: negativeY; 10: positiveY; 01/11: infinity
+    /// @dev the first two msb bits (255-th and 254-th in big-endian)
+    /// 00: negativeY; 10: positiveY; 01: infinity
+    /// since `g1Serialize` produce little-endian bytes, these two bits show up in the
+    /// last 4 hex-char 0x...NI00 where N is the negative bit, I is the infinity bit
+    ///
     /// for the remaining 254-bit value, canonical representation refers to the smallest
     /// non-negative integer for every field element.
     function g1Deserialize(bytes32 input) internal view returns (G1Point memory point) {
@@ -339,6 +345,10 @@ library BN254 {
         if (input == 0x0000000000000000000000000000000000000000000000000000000000000040) {
             // the 254-th bit == 1 for infinity
             point = infinity();
+        } else if (uint256(input) & 0x40 == 0x40) {
+            // infinity bit is set, but others are non-zero: non-canonical infinity, panic!
+            // equivalently, input is not canonical inf, but infinity bit is set.
+            revert("deser fail: non-canonical inf");
         } else {
             uint256 xVal = Utils.reverseEndianness(uint256(input));
             // Set the 255-th bit to 1 for positive Y
