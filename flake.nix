@@ -16,7 +16,8 @@
   inputs.rust-overlay.url = "github:oxalica/rust-overlay";
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
-  inputs.foundry.url = "github:shazow/foundry.nix/monthly"; # Use monthly branch for permanent releases
+  inputs.foundry.url =
+    "github:shazow/foundry.nix/monthly"; # Use monthly branch for permanent releases
   inputs.solc-bin.url = "github:EspressoSystems/nix-solc-bin";
   inputs.pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
 
@@ -36,20 +37,14 @@
     }:
     flake-utils.lib.eachDefaultSystem (system:
     let
-      overlays = [
-        (import rust-overlay)
-        foundry.overlay
-        solc-bin.overlays.default
-      ];
-      pkgs = import nixpkgs {
-        inherit system overlays;
-      };
+      overlays =
+        [ (import rust-overlay) foundry.overlay solc-bin.overlays.default ];
+      pkgs = import nixpkgs { inherit system overlays; };
       # Use a distinct target dir for builds from within nix shells.
       CARGO_TARGET_DIR = "target/nix";
       RUST_BACKTRACE = 1;
     in
-    with pkgs;
-    {
+    with pkgs; {
       checks = {
         pre-commit-check = pre-commit-hooks.lib.${system}.run {
           src = ./.;
@@ -90,38 +85,43 @@
       devShells.default =
         let
           stableToolchain = pkgs.rust-bin.stable.latest.minimal.override {
-            extensions = [ "rustfmt" "clippy" "llvm-tools-preview" "rust-src" "rust-analyzer" ];
+            extensions = [
+              "rustfmt"
+              "clippy"
+              "llvm-tools-preview"
+              "rust-src"
+              "rust-analyzer"
+            ];
           };
           nixWithFlakes = pkgs.writeShellScriptBin "nix" ''
-            exec ${pkgs.nixFlakes}/bin/nix --experimental-features "nix-command flakes" "$@"
+            exec ${pkgs.nixVersions.stable}/bin/nix --experimental-features "nix-command flakes" "$@"
           '';
         in
-        mkShell
-          {
-            buildInputs = [
-              pkg-config
-              coreutils
-              stableToolchain
+        mkShell {
+          buildInputs = [
+            pkg-config
+            coreutils
+            stableToolchain
 
-              # Rust tools
-              cargo-audit
-              cargo-edit
-              cargo-sort
-              just
+            # Rust tools
+            cargo-audit
+            cargo-edit
+            cargo-sort
+            just
 
-              foundry-bin
-              solc
-              nixWithFlakes
-              nixpkgs-fmt
-            ] ++ lib.optionals stdenv.isDarwin [ darwin.apple_sdk.frameworks.SystemConfiguration ];
-            shellHook = ''
-              export CARGO_HOME=$HOME/.cargo-nix
-              export PATH="$PWD/$CARGO_TARGET_DIR/release:$PATH"
-            '' + self.checks.${system}.pre-commit-check.shellHook;
-            FOUNDRY_SOLC = "${solc}/bin/solc";
-            RUST_SRC_PATH = "${stableToolchain}/lib/rustlib/src/rust/library";
-            inherit RUST_BACKTRACE CARGO_TARGET_DIR;
-          };
-    }
-    );
+            foundry-bin
+            solc
+            nixWithFlakes
+            nixpkgs-fmt
+          ] ++ lib.optionals stdenv.isDarwin
+            [ darwin.apple_sdk.frameworks.SystemConfiguration ];
+          shellHook = ''
+            export CARGO_HOME=$HOME/.cargo-nix
+            export PATH="$PWD/$CARGO_TARGET_DIR/release:$PATH"
+          '' + self.checks.${system}.pre-commit-check.shellHook;
+          FOUNDRY_SOLC = "${solc}/bin/solc";
+          RUST_SRC_PATH = "${stableToolchain}/lib/rustlib/src/rust/library";
+          inherit RUST_BACKTRACE CARGO_TARGET_DIR;
+        };
+    });
 }
