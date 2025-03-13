@@ -1,5 +1,5 @@
 [package]
-name = "diff-test-bn254"
+name = "bn254-contract-adapter"
 description = "Structs, type conversion and differential test scripts for solidity-bn254"
 authors = { workspace = true }
 edition = { workspace = true }
@@ -13,3 +13,7 @@ ark-ff = { workspace = true }
 ark-std = { workspace = true }
 clap = { version = "^4.4", features = ["derive"] }
 const-hex = { workspace = true }
+
+[[bin]]
+name = "diff-test-bn254"
+path = "src/main.rs"

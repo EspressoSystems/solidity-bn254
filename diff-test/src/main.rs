@@ -5,9 +5,9 @@ use ark_std::{
     rand::{rngs::StdRng, SeedableRng},
     UniformRand,
 };
+use bn254_contract_adapter::{u256_to_field, G1Point, G2Point};
 use clap::{Parser, ValueEnum};
 use const_hex::ToHexExt;
-use diff_test_bn254::{u256_to_field, G1Point, G2Point};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about=None)]
