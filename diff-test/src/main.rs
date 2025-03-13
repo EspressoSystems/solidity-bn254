@@ -1,13 +1,13 @@
+use alloy::{primitives::U256, sol_types::SolValue};
 use ark_bn254::{Bn254, Fr, G1Affine, G2Affine};
-use ark_ec::{pairing::Pairing, AffineRepr, CurveGroup, Group};
+use ark_ec::{pairing::Pairing, short_weierstrass::SWCurveConfig, AffineRepr, CurveGroup, Group};
 use ark_std::{
     rand::{rngs::StdRng, SeedableRng},
-    UniformRand,
+    test_rng, UniformRand,
 };
+use bn254_contract_adapter::{field_to_u256, u256_to_field, G1Point, G2Point};
 use clap::{Parser, ValueEnum};
-use ethers::{abi::AbiEncode, types::U256};
-
-use diff_test_bn254::{u256_to_field, ParsedG1Point, ParsedG2Point};
+use const_hex::ToHexExt;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about=None)]
@@ -30,6 +30,8 @@ enum Action {
     Bn254G1IsOnCurve,
     /// Generate two pairs of (G1, G2) to test pairingProd2
     Bn254PairingProd2,
+    /// Generate bases and scalars for MSM computation
+    Bn254MSM,
     /// Test only logic
     TestOnly,
 }
@@ -39,25 +41,27 @@ fn main() {
     match cli.action {
         Action::Bn254G2Gen => {
             let p = ark_bn254::G2Affine::generator();
-            let parsed_p: ParsedG2Point = p.into();
-            println!("{}", (parsed_p,).encode_hex());
+            let p: G2Point = p.into();
+            println!("{}", G2Point::abi_encode(&p).encode_hex());
         }
         Action::Bn254G1FromScalar => {
             if cli.args.len() != 1 {
                 panic!("Should provide arg1=scalar");
             }
-
             let s: Fr = u256_to_field(cli.args[0].parse::<U256>().unwrap());
-            let res: ParsedG1Point = (G1Affine::generator() * s).into_affine().into();
-            println!("{}", (res,).encode_hex());
+            let res: G1Point = (G1Affine::generator() * s).into_affine().into();
+            println!("{}", G1Point::abi_encode(&res).encode_hex());
         }
         Action::Bn254G1IsOnCurve => {
             if cli.args.len() != 1 {
                 panic!("Should provide arg1=point");
             }
-            let point: G1Affine = cli.args[0].parse::<ParsedG1Point>().unwrap().into();
+            let point: G1Affine =
+                G1Point::abi_decode(&const_hex::decode(&cli.args[0]).unwrap(), true)
+                    .unwrap()
+                    .into();
             let is_on_curve = point.is_on_curve();
-            println!("{}", (is_on_curve,).encode_hex());
+            println!("{}", is_on_curve.abi_encode().encode_hex());
         }
         Action::Bn254PairingProd2 => {
             if cli.args.len() != 1 {
@@ -86,12 +90,35 @@ fn main() {
                 assert_ne!(Bn254::pairing(a_1, a_2), Bn254::pairing(b_1, b_2));
             }
 
-            let parsed_a_1: ParsedG1Point = a_1.into_affine().into();
-            let parsed_a_2: ParsedG2Point = a_2.into_affine().into();
-            let parsed_b_1: ParsedG1Point = (-b_1).into_affine().into();
-            let parsed_b_2: ParsedG2Point = b_2.into_affine().into();
+            let parsed_a_1: G1Point = a_1.into_affine().into();
+            let parsed_a_2: G2Point = a_2.into_affine().into();
+            let parsed_b_1: G1Point = (-b_1).into_affine().into();
+            let parsed_b_2: G2Point = b_2.into_affine().into();
             let res = (parsed_a_1, parsed_a_2, parsed_b_1, parsed_b_2);
-            println!("{}", res.encode_hex());
+            println!("{}", res.abi_encode_params().encode_hex());
+        }
+        Action::Bn254MSM => {
+            if cli.args.len() != 1 {
+                panic!("Should provide arg1=numBases");
+            }
+
+            let num_bases = cli.args[0].parse::<u64>().unwrap();
+            let mut rng = test_rng();
+            let mut bases = vec![];
+            let mut scalars = vec![];
+
+            for _ in 0..num_bases {
+                bases.push(G1Affine::rand(&mut rng));
+                scalars.push(Fr::rand(&mut rng));
+            }
+
+            let prod = ark_bn254::g1::Config::msm(&bases, &scalars).unwrap();
+            let parsed_bases: Vec<G1Point> = bases.iter().map(|b| (*b).into()).collect();
+            let parsed_scalars: Vec<U256> = scalars.iter().map(|s| field_to_u256(*s)).collect();
+            let parsed_prod: G1Point = prod.into_affine().into();
+
+            let res = (parsed_bases, parsed_scalars, parsed_prod);
+            println!("{}", res.abi_encode_params().encode_hex());
         }
         Action::TestOnly => {
             eprintln!("test only");

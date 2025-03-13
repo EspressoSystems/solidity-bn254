@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.28;
 
 // Libraries
 import "forge-std/Test.sol";
@@ -9,9 +9,6 @@ import "forge-std/Test.sol";
 import { BN254 } from "../src/BN254.sol";
 
 contract BN254CommonTest is Test {
-    using BN254 for BN254.BaseField;
-    using BN254 for BN254.ScalarField;
-
     /// Thin wrapper to ensure two G1 points are the same
     /// @dev we not only require value equality (mod p), but also representation equality in u256
     function assertEqG1Point(BN254.G1Point memory a, BN254.G1Point memory b) public {
@@ -37,7 +34,7 @@ contract BN254_P2_Test is BN254CommonTest {
         cmds[1] = "bn254-g2-gen";
 
         bytes memory result = vm.ffi(cmds);
-        (BN254.G2Point memory g2Gen) = abi.decode(result, (BN254.G2Point));
+        BN254.G2Point memory g2Gen = abi.decode(result, (BN254.G2Point));
 
         assertEqG2Point(BN254.P2(), g2Gen);
     }
@@ -100,13 +97,14 @@ contract BN254_validateG1Point_Test is BN254CommonTest {
         cmds[2] = vm.toString(bytes32(randScalar));
 
         bytes memory result = vm.ffi(cmds);
-        (BN254.G1Point memory point) = abi.decode(result, (BN254.G1Point));
+        BN254.G1Point memory point = abi.decode(result, (BN254.G1Point));
 
         // valid point should pass
         BN254.validateG1Point(point);
     }
 
     /// @dev Test invalid points should cause revert
+    /// forge-config: default.allow_internal_expect_revert = true
     function test_RevertWhenInvalidPoint(BN254.G1Point memory point) external {
         string[] memory cmds = new string[](3);
         cmds[0] = "diff-test-bn254";
@@ -114,10 +112,10 @@ contract BN254_validateG1Point_Test is BN254CommonTest {
         cmds[2] = vm.toString(abi.encode(point));
 
         bytes memory result = vm.ffi(cmds);
-        (bool isOnCurve) = abi.decode(result, (bool));
+        bool isOnCurve = abi.decode(result, (bool));
 
         if (!isOnCurve) {
-            vm.expectRevert("Bn254: invalid G1 point");
+            vm.expectRevert(BN254.InvalidG1.selector);
             BN254.validateG1Point(point);
         }
     }
@@ -147,5 +145,68 @@ contract BN254_pairingProd2_Test is BN254CommonTest {
         } else {
             assert(BN254.pairingProd2(a1, a2, b1, b2));
         }
+    }
+}
+
+contract BN254_scalarField_Test is Test {
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testInvertOnZero() external {
+        vm.expectRevert(BN254.BN254ScalarInvZero.selector);
+        BN254.invert(BN254.ScalarField.wrap(0));
+    }
+}
+
+contract BN254_multiScalarMul_Test is BN254CommonTest {
+    /// forge-config: default.allow_internal_expect_revert = true
+    function test_revertWhenEmptyArray() external {
+        BN254.G1Point[] memory bases;
+        BN254.ScalarField[] memory scalars;
+        assert(bases.length == 0 && scalars.length == 0);
+        vm.expectRevert(BN254.InvalidArgs.selector);
+        BN254.multiScalarMul(bases, scalars);
+    }
+
+    function test_msm() external {
+        uint64 numBases = 5;
+
+        string[] memory cmds = new string[](3);
+        cmds[0] = "diff-test-bn254";
+        cmds[1] = "bn254-msm";
+        cmds[2] = vm.toString(numBases);
+
+        bytes memory result = vm.ffi(cmds);
+        (BN254.G1Point[] memory bases, BN254.ScalarField[] memory scalars, BN254.G1Point memory res)
+        = abi.decode(result, (BN254.G1Point[], BN254.ScalarField[], BN254.G1Point));
+
+        assertEqG1Point(res, BN254.multiScalarMul(bases, scalars));
+    }
+}
+
+contract BN254Caller {
+    function foo() public view returns (BN254.G1Point memory res) {
+        res = BN254.add(BN254.P1(), BN254.P1());
+    }
+}
+
+contract InternalLibTest is Test {
+    BN254Caller c;
+
+    function setUp() public {
+        c = new BN254Caller();
+    }
+
+    function containsDelegateCall(bytes memory code) internal pure returns (bool) {
+        for (uint256 i = 0; i < code.length - 1; i++) {
+            if (code[i] == 0xF4) {
+                // 0xF4 = DELEGATECALL opcode
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function testLibraryIsInlined() public {
+        bytes memory bytecode = address(c).code;
+        assertFalse(containsDelegateCall(bytecode), "Library should be inlined");
     }
 }

@@ -1,15 +1,9 @@
-use std::str::FromStr;
-
+use alloy::{primitives::U256, sol};
 use ark_ec::{
     short_weierstrass::{Affine, SWCurveConfig},
     AffineRepr,
 };
 use ark_ff::{BigInteger, Fp2, Fp2Config, PrimeField};
-use ethers::{
-    abi::AbiDecode,
-    prelude::{AbiError, EthAbiCodec, EthAbiType},
-    types::U256,
-};
 
 // TODO: (alex) maybe move these commonly shared util to a crate
 /// convert a field element to U256, panic if field size is larger than 256 bit
@@ -17,27 +11,31 @@ pub fn field_to_u256<F: PrimeField>(f: F) -> U256 {
     if F::MODULUS_BIT_SIZE > 256 {
         panic!("Shouldn't convert a >256-bit field to U256");
     }
-    U256::from_little_endian(&f.into_bigint().to_bytes_le())
+    U256::from_le_slice(&f.into_bigint().to_bytes_le())
 }
 
 /// convert U256 to a field (mod order)
 pub fn u256_to_field<F: PrimeField>(x: U256) -> F {
-    let mut bytes = [0u8; 32];
-    x.to_little_endian(&mut bytes);
+    let bytes: [u8; 32] = x.to_le_bytes();
     F::from_le_bytes_mod_order(&bytes)
 }
 
-/// an intermediate representation of `BN254.G1Point` in solidity.
-#[derive(Clone, PartialEq, Eq, Debug, EthAbiType, EthAbiCodec)]
-pub struct ParsedG1Point {
-    /// x coordinate of affine repr
-    pub x: U256,
-    /// y coordinate of affine repr
-    pub y: U256,
+// same as `forge bind --alloy`, only the struct related part
+sol! {
+    struct G1Point {
+        uint256 x;
+        uint256 y;
+    }
+    struct G2Point {
+        uint256 x0;
+        uint256 x1;
+        uint256 y0;
+        uint256 y1;
+    }
 }
 
 // this is convention from BN256 precompile
-impl Default for ParsedG1Point {
+impl Default for G1Point {
     fn default() -> Self {
         Self {
             x: U256::from(0),
@@ -45,16 +43,13 @@ impl Default for ParsedG1Point {
         }
     }
 }
-
-impl FromStr for ParsedG1Point {
-    type Err = AbiError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let parsed: (Self,) = AbiDecode::decode_hex(s)?;
-        Ok(parsed.0)
+impl PartialEq for G1Point {
+    fn eq(&self, other: &Self) -> bool {
+        self.x == other.x && self.y == other.y
     }
 }
 
-impl<P: SWCurveConfig> From<Affine<P>> for ParsedG1Point
+impl<P: SWCurveConfig> From<Affine<P>> for G1Point
 where
     P::BaseField: PrimeField,
 {
@@ -74,12 +69,12 @@ where
     }
 }
 
-impl<P: SWCurveConfig> From<ParsedG1Point> for Affine<P>
+impl<P: SWCurveConfig> From<G1Point> for Affine<P>
 where
     P::BaseField: PrimeField,
 {
-    fn from(p: ParsedG1Point) -> Self {
-        if p == ParsedG1Point::default() {
+    fn from(p: G1Point) -> Self {
+        if p == G1Point::default() {
             Self::default()
         } else {
             Self::new_unchecked(
@@ -90,32 +85,11 @@ where
     }
 }
 
-/// Intermediate representation of `G2Point` in Solidity
-#[derive(Clone, PartialEq, Eq, Debug, EthAbiType, EthAbiCodec)]
-pub struct ParsedG2Point {
-    /// x0 of x = x0 + u * x1 coordinate
-    pub x0: U256,
-    /// x1 of x = x0 + u * x1 coordinate
-    pub x1: U256,
-    /// y0 of y = y0 + u * y1 coordinate
-    pub y0: U256,
-    /// y1 of y = y0 + u * y1 coordinate
-    pub y1: U256,
-}
-
-impl FromStr for ParsedG2Point {
-    type Err = AbiError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let parsed: (Self,) = AbiDecode::decode_hex(s)?;
-        Ok(parsed.0)
-    }
-}
-
-impl<P: SWCurveConfig<BaseField = Fp2<C>>, C> From<ParsedG2Point> for Affine<P>
+impl<P: SWCurveConfig<BaseField = Fp2<C>>, C> From<G2Point> for Affine<P>
 where
     C: Fp2Config,
 {
-    fn from(p: ParsedG2Point) -> Self {
+    fn from(p: G2Point) -> Self {
         Self::new_unchecked(
             Fp2::new(u256_to_field(p.x0), u256_to_field(p.x1)),
             Fp2::new(u256_to_field(p.y0), u256_to_field(p.y1)),
@@ -123,7 +97,7 @@ where
     }
 }
 
-impl<P: SWCurveConfig<BaseField = Fp2<C>>, C> From<Affine<P>> for ParsedG2Point
+impl<P: SWCurveConfig<BaseField = Fp2<C>>, C> From<Affine<P>> for G2Point
 where
     C: Fp2Config,
 {

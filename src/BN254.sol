@@ -7,14 +7,16 @@
 // This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 // You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+// # History Note
 //
 // Based on:
 // - Christian Reitwiessner: https://gist.githubusercontent.com/chriseth/f9be9d9391efc5beb9704255a8e2989d/raw/4d0fb90847df1d4e04d507019031888df8372239/snarktest.solidity
 // - Aztec: https://github.com/AztecProtocol/aztec-2-bug-bounty
+// - Espresso V1: https://github.com/EspressoSystems/solidity-bn254/blob/4f2e93be209b06fdf38584e6bf1d1e8f4c371198/src/BN254.sol
+//
+// - 13/03/2025: drop unused functions like serialize
 
-pragma solidity ^0.8.0;
-
-import { Utils } from "./Utils.sol";
+pragma solidity ^0.8.28;
 
 /// @notice Barreto-Naehrig curve over a 254 bit prime field
 library BN254 {
@@ -44,9 +46,9 @@ library BN254 {
     // and G_T as a subgroup of a multiplicative group (GF(p^12))^* of order r.
     //
     // BN254 is defined over a 254-bit prime order p, embedding degree k = 12.
-    uint256 public constant P_MOD =
+    uint256 internal constant P_MOD =
         21888242871839275222246405745257275088696311157297823662689037894645226208583;
-    uint256 public constant R_MOD =
+    uint256 internal constant R_MOD =
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
 
     struct G1Point {
@@ -61,6 +63,15 @@ library BN254 {
         BaseField y0;
         BaseField y1;
     }
+
+    error BN254G1AddFailed();
+    error BN254ScalarMulFailed();
+    error BN254ScalarInvFailed();
+    error BN254ScalarInvZero();
+    error BN254PairingProdFailed();
+    error InvalidArgs();
+    error InvalidG1();
+    error InvalidScalar();
 
     /// @return the generator of G1
     // solhint-disable-next-line func-name-mixedcase
@@ -103,18 +114,8 @@ library BN254 {
         }
         return G1Point(p.x, BaseField.wrap(P_MOD - (BaseField.unwrap(p.y) % P_MOD)));
     }
-
-    /// @return res = -fr the negation of scalar field element.
-    function negate(ScalarField fr) internal pure returns (ScalarField res) {
-        return ScalarField.wrap(R_MOD - (ScalarField.unwrap(fr) % R_MOD));
-    }
-
-    /// @notice res = -fq for base field
-    function negate(BaseField fq) internal pure returns (BaseField) {
-        return BaseField.wrap(P_MOD - (BaseField.unwrap(fq) % P_MOD));
-    }
-
     /// @return r the sum of two points of G1
+
     function add(G1Point memory p1, G1Point memory p2) internal view returns (G1Point memory r) {
         uint256[4] memory input;
         input[0] = BaseField.unwrap(p1.x);
@@ -123,32 +124,9 @@ library BN254 {
         input[3] = BaseField.unwrap(p2.y);
         bool success;
         assembly {
-            success := staticcall(sub(gas(), 2000), 6, input, 0xc0, r, 0x60)
-            // Use "invalid" to make gas estimation work
-            switch success
-            case 0 { revert(0, 0) }
+            success := staticcall(gas(), 6, input, 0x80, r, 0x40)
         }
-        require(success, "Bn254: group addition failed!");
-    }
-
-    /// @notice add for BaseField
-    function add(BaseField a, BaseField b) internal pure returns (BaseField) {
-        return BaseField.wrap(addmod(BaseField.unwrap(a), BaseField.unwrap(b), P_MOD));
-    }
-
-    /// @notice add for ScalarField
-    function add(ScalarField a, ScalarField b) internal pure returns (ScalarField) {
-        return ScalarField.wrap(addmod(ScalarField.unwrap(a), ScalarField.unwrap(b), R_MOD));
-    }
-
-    /// @notice mul for BaseField
-    function mul(BaseField a, BaseField b) internal pure returns (BaseField) {
-        return BaseField.wrap(mulmod(BaseField.unwrap(a), BaseField.unwrap(b), P_MOD));
-    }
-
-    /// @notice mul for ScalarField
-    function mul(ScalarField a, ScalarField b) internal pure returns (ScalarField) {
-        return ScalarField.wrap(mulmod(ScalarField.unwrap(a), ScalarField.unwrap(b), R_MOD));
+        require(success, BN254G1AddFailed());
     }
 
     /// @return r the product of a point on G1 and a scalar, i.e.
@@ -160,12 +138,9 @@ library BN254 {
         input[2] = ScalarField.unwrap(s);
         bool success;
         assembly {
-            success := staticcall(sub(gas(), 2000), 7, input, 0x80, r, 0x60)
-            // Use "invalid" to make gas estimation work
-            switch success
-            case 0 { revert(0, 0) }
+            success := staticcall(gas(), 7, input, 0x60, r, 0x40)
         }
-        require(success, "Bn254: scalar mul failed!");
+        require(success, BN254ScalarMulFailed());
     }
 
     /// @dev Multi-scalar Mulitiplication (MSM)
@@ -175,7 +150,7 @@ library BN254 {
         view
         returns (G1Point memory r)
     {
-        require(scalars.length == bases.length, "MSM error: length does not match");
+        require(scalars.length == bases.length && scalars.length != 0, InvalidArgs());
 
         r = scalarMul(bases[0], scalars[0]);
         for (uint256 i = 1; i < scalars.length; i++) {
@@ -186,6 +161,8 @@ library BN254 {
     /// @dev Compute f^-1 for f \in Fr scalar field
     /// @notice credit: Aztec, Spilsbury Holdings Ltd
     function invert(ScalarField fr) internal view returns (ScalarField output) {
+        require(ScalarField.unwrap(fr) != 0, BN254ScalarInvZero());
+
         bool success;
         uint256 p = R_MOD;
         assembly {
@@ -199,7 +176,7 @@ library BN254 {
             success := staticcall(gas(), 0x05, mPtr, 0xc0, 0x00, 0x20)
             output := mload(0x00)
         }
-        require(success, "Bn254: pow precompile failed!");
+        require(success, BN254ScalarInvFailed());
     }
 
     /**
@@ -226,7 +203,7 @@ library BN254 {
                     eq(mulmod(y, y, p), addmod(mulmod(x, mulmod(x, x, p), p), 3, p))
                 )
         }
-        require(isWellFormed, "Bn254: invalid G1 point");
+        require(isWellFormed, InvalidG1());
     }
 
     /// @dev Validate scalar field, revert if invalid (namely if fr > r_mod).
@@ -236,7 +213,7 @@ library BN254 {
         assembly {
             isValid := lt(fr, R_MOD)
         }
-        require(isValid, "Bn254: invalid scalar field");
+        require(isValid, InvalidScalar());
     }
 
     /// @dev Evaluate the following pairing product:
@@ -270,20 +247,8 @@ library BN254 {
             success := staticcall(gas(), 8, mPtr, 0x180, 0x00, 0x20)
             out := mload(0x00)
         }
-        require(success, "Bn254: Pairing check failed!");
+        require(success, BN254PairingProdFailed());
         return (out != 0);
-    }
-
-    function fromLeBytesModOrder(bytes memory leBytes) internal pure returns (uint256 ret) {
-        for (uint256 i = 0; i < leBytes.length; i++) {
-            ret = mulmod(ret, 256, R_MOD);
-            ret = addmod(ret, uint256(uint8(leBytes[leBytes.length - 1 - i])), R_MOD);
-        }
-    }
-
-    /// @dev Check if y-coordinate of G1 point is negative.
-    function isYNegative(G1Point memory point) internal pure returns (bool) {
-        return (BaseField.unwrap(point.y) << 1) < P_MOD;
     }
 
     // @dev Perform a modular exponentiation.
@@ -308,92 +273,5 @@ library BN254 {
         }
 
         return result;
-    }
-
-    function g1Serialize(G1Point memory point) internal pure returns (bytes memory) {
-        uint256 mask = 0;
-
-        // Set the 254-th bit to 1 for infinity
-        // https://docs.rs/ark-serialize/0.3.0/src/ark_serialize/flags.rs.html#117
-        if (isInfinity(point)) {
-            mask |= 0x4000000000000000000000000000000000000000000000000000000000000000;
-        }
-
-        // Set the 255-th bit to 1 for positive Y
-        // https://docs.rs/ark-serialize/0.3.0/src/ark_serialize/flags.rs.html#118
-        if (!isYNegative(point)) {
-            mask = 0x8000000000000000000000000000000000000000000000000000000000000000;
-        }
-
-        return abi.encodePacked(Utils.reverseEndianness(BaseField.unwrap(point.x) | mask));
-    }
-
-    function g1Deserialize(bytes32 input) internal view returns (G1Point memory point) {
-        uint256 mask = 0x4000000000000000000000000000000000000000000000000000000000000000;
-        uint256 xVal = Utils.reverseEndianness(uint256(input));
-        bool isQuadraticResidue;
-        bool isYPositive;
-        if (xVal & mask != 0) {
-            // the 254-th bit == 1 for infinity
-            point = infinity();
-        } else {
-            // Set the 255-th bit to 1 for positive Y
-            mask = 0x8000000000000000000000000000000000000000000000000000000000000000;
-            isYPositive = (xVal & mask != 0);
-            // mask off the first two bits of x
-            mask = 0x3FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
-            xVal &= mask;
-
-            // solve for y where E: y^2 = x^3 + 3
-            BaseField x = BaseField.wrap(xVal);
-            BaseField y = add(mul(mul(x, x), x), BaseField.wrap(3));
-            (isQuadraticResidue, y) = quadraticResidue(y);
-
-            require(isQuadraticResidue, "deser fail: not on curve");
-
-            if (isYPositive) {
-                y = negate(y);
-            }
-            point = G1Point(x, y);
-        }
-    }
-
-    function quadraticResidue(BaseField x)
-        internal
-        view
-        returns (bool isQuadraticResidue, BaseField)
-    {
-        bool success;
-        uint256 a;
-        // e = (p+1)/4
-        uint256 e = 0xc19139cb84c680a6e14116da060561765e05aa45a1c72a34f082305b61f3f52;
-        uint256 p = P_MOD;
-
-        // we have p == 3 mod 4 therefore
-        // a = x^((p+1)/4)
-        assembly {
-            // credit: Aztec
-            let mPtr := mload(0x40)
-            mstore(mPtr, 0x20)
-            mstore(add(mPtr, 0x20), 0x20)
-            mstore(add(mPtr, 0x40), 0x20)
-            mstore(add(mPtr, 0x60), x)
-            mstore(add(mPtr, 0x80), e)
-            mstore(add(mPtr, 0xa0), p)
-            success := staticcall(gas(), 0x05, mPtr, 0xc0, 0x00, 0x20)
-            a := mload(0x00)
-        }
-        require(success, "pow precompile call failed!");
-
-        // ensure a < p/2
-        if (a << 1 > p) {
-            a = p - a;
-        }
-
-        // check if a^2 = x, if not x is not a quadratic residue
-        e = mulmod(a, a, p);
-
-        isQuadraticResidue = (e == BaseField.unwrap(x));
-        return (isQuadraticResidue, BaseField.wrap(a));
     }
 }
