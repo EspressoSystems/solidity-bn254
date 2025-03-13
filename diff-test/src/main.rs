@@ -1,11 +1,11 @@
 use alloy::{primitives::U256, sol_types::SolValue};
 use ark_bn254::{Bn254, Fr, G1Affine, G2Affine};
-use ark_ec::{pairing::Pairing, AffineRepr, CurveGroup, Group};
+use ark_ec::{pairing::Pairing, short_weierstrass::SWCurveConfig, AffineRepr, CurveGroup, Group};
 use ark_std::{
     rand::{rngs::StdRng, SeedableRng},
-    UniformRand,
+    test_rng, UniformRand,
 };
-use bn254_contract_adapter::{u256_to_field, G1Point, G2Point};
+use bn254_contract_adapter::{field_to_u256, u256_to_field, G1Point, G2Point};
 use clap::{Parser, ValueEnum};
 use const_hex::ToHexExt;
 
@@ -30,6 +30,8 @@ enum Action {
     Bn254G1IsOnCurve,
     /// Generate two pairs of (G1, G2) to test pairingProd2
     Bn254PairingProd2,
+    /// Generate bases and scalars for MSM computation
+    Bn254MSM,
     /// Test only logic
     TestOnly,
 }
@@ -93,7 +95,30 @@ fn main() {
             let parsed_b_1: G1Point = (-b_1).into_affine().into();
             let parsed_b_2: G2Point = b_2.into_affine().into();
             let res = (parsed_a_1, parsed_a_2, parsed_b_1, parsed_b_2);
-            println!("{}", res.abi_encode().encode_hex());
+            println!("{}", res.abi_encode_params().encode_hex());
+        }
+        Action::Bn254MSM => {
+            if cli.args.len() != 1 {
+                panic!("Should provide arg1=numBases");
+            }
+
+            let num_bases = cli.args[0].parse::<u64>().unwrap();
+            let mut rng = test_rng();
+            let mut bases = vec![];
+            let mut scalars = vec![];
+
+            for _ in 0..num_bases {
+                bases.push(G1Affine::rand(&mut rng));
+                scalars.push(Fr::rand(&mut rng));
+            }
+
+            let prod = ark_bn254::g1::Config::msm(&bases, &scalars).unwrap();
+            let parsed_bases: Vec<G1Point> = bases.iter().map(|b| (*b).into()).collect();
+            let parsed_scalars: Vec<U256> = scalars.iter().map(|s| field_to_u256(*s)).collect();
+            let parsed_prod: G1Point = prod.into_affine().into();
+
+            let res = (parsed_bases, parsed_scalars, parsed_prod);
+            println!("{}", res.abi_encode_params().encode_hex());
         }
         Action::TestOnly => {
             eprintln!("test only");
