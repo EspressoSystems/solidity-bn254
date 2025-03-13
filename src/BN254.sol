@@ -14,12 +14,12 @@
 // - Aztec: https://github.com/AztecProtocol/aztec-2-bug-bounty
 // - Espresso V1: https://github.com/EspressoSystems/solidity-bn254/blob/4f2e93be209b06fdf38584e6bf1d1e8f4c371198/src/BN254.sol
 //
-// - 13/03/2025: convert from library to contract, drop unused functions like serialize
+// - 13/03/2025: drop unused functions like serialize
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.26;
 
 /// @notice Barreto-Naehrig curve over a 254 bit prime field
-contract BN254 {
+library BN254 {
     /// @notice type alias for BN254::ScalarField
     type ScalarField is uint256;
     /// @notice type alias for BN254::BaseField
@@ -46,9 +46,9 @@ contract BN254 {
     // and G_T as a subgroup of a multiplicative group (GF(p^12))^* of order r.
     //
     // BN254 is defined over a 254-bit prime order p, embedding degree k = 12.
-    uint256 public constant P_MOD =
+    uint256 internal constant P_MOD =
         21888242871839275222246405745257275088696311157297823662689037894645226208583;
-    uint256 public constant R_MOD =
+    uint256 internal constant R_MOD =
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
 
     struct G1Point {
@@ -74,13 +74,13 @@ contract BN254 {
 
     /// @return the generator of G1
     // solhint-disable-next-line func-name-mixedcase
-    function P1() public pure returns (G1Point memory) {
+    function P1() internal pure returns (G1Point memory) {
         return G1Point(BaseField.wrap(1), BaseField.wrap(2));
     }
 
     /// @return the generator of G2
     // solhint-disable-next-line func-name-mixedcase
-    function P2() public pure returns (G2Point memory) {
+    function P2() internal pure returns (G2Point memory) {
         return G2Point({
             x0: BaseField.wrap(0x1800deef121f1e76426a00665e5c4479674322d4f75edadd46debd5cd992f6ed),
             x1: BaseField.wrap(0x198e9393920d483a7260bfb731fb5d25f1aa493335a9e71297e485b7aef312c2),
@@ -90,7 +90,7 @@ contract BN254 {
     }
 
     /// @notice the neutral/infinity point of G1
-    function infinity() public pure returns (G1Point memory) {
+    function infinity() internal pure returns (G1Point memory) {
         return G1Point(BaseField.wrap(0), BaseField.wrap(0));
     }
 
@@ -98,7 +98,7 @@ contract BN254 {
     /// @notice precompile bn256Add at address(6) takes (0, 0) as Point of Infinity,
     /// some crypto libraries (such as arkwork) uses a boolean flag to mark PoI, and
     /// just use (0, 1) as affine coordinates (not on curve) to represents PoI.
-    function isInfinity(G1Point memory point) public pure returns (bool result) {
+    function isInfinity(G1Point memory point) internal pure returns (bool result) {
         assembly {
             let x := mload(point)
             let y := mload(add(point, 0x20))
@@ -107,7 +107,7 @@ contract BN254 {
     }
 
     /// @return r the negation of p, i.e. p.add(p.negate()) should be zero.
-    function negate(G1Point memory p) public pure returns (G1Point memory) {
+    function negate(G1Point memory p) internal pure returns (G1Point memory) {
         if (isInfinity(p)) {
             return p;
         }
@@ -115,7 +115,7 @@ contract BN254 {
     }
     /// @return r the sum of two points of G1
 
-    function add(G1Point memory p1, G1Point memory p2) public view returns (G1Point memory r) {
+    function add(G1Point memory p1, G1Point memory p2) internal view returns (G1Point memory r) {
         uint256[4] memory input;
         input[0] = BaseField.unwrap(p1.x);
         input[1] = BaseField.unwrap(p1.y);
@@ -128,14 +128,12 @@ contract BN254 {
             switch success
             case 0 { revert(0, 0) }
         }
-        if (!success) {
-            revert BN254G1AddFailed();
-        }
+        require(success, BN254G1AddFailed());
     }
 
     /// @return r the product of a point on G1 and a scalar, i.e.
     /// p == p.mul(1) and p.add(p) == p.mul(2) for all points p.
-    function scalarMul(G1Point memory p, ScalarField s) public view returns (G1Point memory r) {
+    function scalarMul(G1Point memory p, ScalarField s) internal view returns (G1Point memory r) {
         uint256[3] memory input;
         input[0] = BaseField.unwrap(p.x);
         input[1] = BaseField.unwrap(p.y);
@@ -147,21 +145,17 @@ contract BN254 {
             switch success
             case 0 { revert(0, 0) }
         }
-        if (!success) {
-            revert BN254ScalarMulFailed();
-        }
+        require(success, BN254ScalarMulFailed());
     }
 
     /// @dev Multi-scalar Mulitiplication (MSM)
     /// @return r = \Prod{B_i^s_i} where {s_i} are `scalars` and {B_i} are `bases`
     function multiScalarMul(G1Point[] memory bases, ScalarField[] memory scalars)
-        public
+        internal
         view
         returns (G1Point memory r)
     {
-        if (scalars.length != bases.length) {
-            revert InvalidArgs();
-        }
+        require(scalars.length == bases.length, InvalidArgs());
 
         r = scalarMul(bases[0], scalars[0]);
         for (uint256 i = 1; i < scalars.length; i++) {
@@ -171,7 +165,7 @@ contract BN254 {
 
     /// @dev Compute f^-1 for f \in Fr scalar field
     /// @notice credit: Aztec, Spilsbury Holdings Ltd
-    function invert(ScalarField fr) public view returns (ScalarField output) {
+    function invert(ScalarField fr) internal view returns (ScalarField output) {
         bool success;
         uint256 p = R_MOD;
         assembly {
@@ -185,9 +179,7 @@ contract BN254 {
             success := staticcall(gas(), 0x05, mPtr, 0xc0, 0x00, 0x20)
             output := mload(0x00)
         }
-        if (!success) {
-            revert BN254ScalarInvFailed();
-        }
+        require(success, BN254ScalarInvFailed());
     }
 
     /**
@@ -198,7 +190,7 @@ contract BN254 {
      */
     /// @dev validate G1 point and check if it is on curve
     /// @notice credit: Aztec, Spilsbury Holdings Ltd
-    function validateG1Point(G1Point memory point) public pure {
+    function validateG1Point(G1Point memory point) internal pure {
         bool isWellFormed;
         uint256 p = P_MOD;
         if (isInfinity(point)) {
@@ -214,21 +206,17 @@ contract BN254 {
                     eq(mulmod(y, y, p), addmod(mulmod(x, mulmod(x, x, p), p), 3, p))
                 )
         }
-        if (!isWellFormed) {
-            revert InvalidG1();
-        }
+        require(isWellFormed, InvalidG1());
     }
 
     /// @dev Validate scalar field, revert if invalid (namely if fr > r_mod).
     /// @notice Writing this inline instead of calling it might save gas.
-    function validateScalarField(ScalarField fr) public pure {
+    function validateScalarField(ScalarField fr) internal pure {
         bool isValid;
         assembly {
             isValid := lt(fr, R_MOD)
         }
-        if (!isValid) {
-            revert InvalidScalar();
-        }
+        require(isValid, InvalidScalar());
     }
 
     /// @dev Evaluate the following pairing product:
@@ -241,7 +229,7 @@ contract BN254 {
         G2Point memory a2,
         G1Point memory b1,
         G2Point memory b2
-    ) public view returns (bool) {
+    ) internal view returns (bool) {
         uint256 out;
         bool success;
         assembly {
@@ -262,9 +250,7 @@ contract BN254 {
             success := staticcall(gas(), 8, mPtr, 0x180, 0x00, 0x20)
             out := mload(0x00)
         }
-        if (!success) {
-            revert BN254PairingProdFailed();
-        }
+        require(success, BN254PairingProdFailed());
         return (out != 0);
     }
 
@@ -273,7 +259,7 @@ contract BN254 {
     // This method is ideal for small exponents (~64 bits or less), as it is cheaper than using the pow precompile
     // @notice credit: credit: Aztec, Spilsbury Holdings Ltd
     function powSmall(uint256 base, uint256 exponent, uint256 modulus)
-        public
+        internal
         pure
         returns (uint256)
     {

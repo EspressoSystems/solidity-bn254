@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.26;
 
 // Libraries
 import "forge-std/Test.sol";
@@ -27,12 +27,6 @@ contract BN254CommonTest is Test {
 }
 
 contract BN254_P2_Test is BN254CommonTest {
-    BN254 bn254;
-
-    function setUp() public {
-        bn254 = new BN254();
-    }
-
     /// @dev Test if the G2 generator matches with arkworks
     function test_p2_matches() external {
         string[] memory cmds = new string[](2);
@@ -42,34 +36,28 @@ contract BN254_P2_Test is BN254CommonTest {
         bytes memory result = vm.ffi(cmds);
         BN254.G2Point memory g2Gen = abi.decode(result, (BN254.G2Point));
 
-        assertEqG2Point(bn254.P2(), g2Gen);
+        assertEqG2Point(BN254.P2(), g2Gen);
     }
 }
 
 contract BN254_scalarMul_Test is BN254CommonTest {
-    BN254 bn254;
-
-    function setUp() public {
-        bn254 = new BN254();
-    }
-
     /// @dev Test some edge cases
     function test_EdgeCases() external {
-        assertEqG1Point(bn254.scalarMul(bn254.P1(), BN254.ScalarField.wrap(0)), bn254.infinity());
-        assertEqG1Point(bn254.scalarMul(bn254.P1(), BN254.ScalarField.wrap(1)), bn254.P1());
+        assertEqG1Point(BN254.scalarMul(BN254.P1(), BN254.ScalarField.wrap(0)), BN254.infinity());
+        assertEqG1Point(BN254.scalarMul(BN254.P1(), BN254.ScalarField.wrap(1)), BN254.P1());
         // generator ^ -1
         BN254.G1Point memory genInv = BN254.G1Point(
             BN254.BaseField.wrap(1),
             BN254.BaseField.wrap(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd45)
         );
         assertEqG1Point(
-            bn254.scalarMul(bn254.P1(), BN254.ScalarField.wrap(bn254.R_MOD() - 1)), genInv
+            BN254.scalarMul(BN254.P1(), BN254.ScalarField.wrap(BN254.R_MOD - 1)), genInv
         );
         assertEqG1Point(
-            bn254.scalarMul(bn254.P1(), BN254.ScalarField.wrap(bn254.R_MOD())), bn254.infinity()
+            BN254.scalarMul(BN254.P1(), BN254.ScalarField.wrap(BN254.R_MOD)), BN254.infinity()
         );
         assertEqG1Point(
-            bn254.scalarMul(bn254.P1(), BN254.ScalarField.wrap(bn254.R_MOD() + 1)), bn254.P1()
+            BN254.scalarMul(BN254.P1(), BN254.ScalarField.wrap(BN254.R_MOD + 1)), BN254.P1()
         );
     }
 
@@ -83,28 +71,22 @@ contract BN254_scalarMul_Test is BN254CommonTest {
         bytes memory result = vm.ffi(cmds);
         (BN254.G1Point memory point) = abi.decode(result, (BN254.G1Point));
 
-        assertEqG1Point(point, bn254.scalarMul(bn254.P1(), BN254.ScalarField.wrap(randScalar)));
+        assertEqG1Point(point, BN254.scalarMul(BN254.P1(), BN254.ScalarField.wrap(randScalar)));
     }
 }
 
 contract BN254_validateG1Point_Test is BN254CommonTest {
-    BN254 bn254;
-
-    function setUp() public {
-        bn254 = new BN254();
-    }
-
     /// @dev Test some valid edge-case points
-    function test_EdgeCases() external view {
-        bn254.validateG1Point(bn254.P1());
-        bn254.validateG1Point(bn254.infinity());
-        bn254.validateG1Point(bn254.negate(bn254.P1()));
+    function test_EdgeCases() external pure {
+        BN254.validateG1Point(BN254.P1());
+        BN254.validateG1Point(BN254.infinity());
+        BN254.validateG1Point(BN254.negate(BN254.P1()));
         // generator ^ -1
         BN254.G1Point memory genInv = BN254.G1Point(
             BN254.BaseField.wrap(1),
             BN254.BaseField.wrap(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd45)
         );
-        bn254.validateG1Point(genInv);
+        BN254.validateG1Point(genInv);
     }
 
     /// @dev Test random valid points should pass
@@ -118,10 +100,11 @@ contract BN254_validateG1Point_Test is BN254CommonTest {
         BN254.G1Point memory point = abi.decode(result, (BN254.G1Point));
 
         // valid point should pass
-        bn254.validateG1Point(point);
+        BN254.validateG1Point(point);
     }
 
     /// @dev Test invalid points should cause revert
+    /// forge-config: default.allow_internal_expect_revert = true
     function test_RevertWhenInvalidPoint(BN254.G1Point memory point) external {
         string[] memory cmds = new string[](3);
         cmds[0] = "diff-test-bn254";
@@ -133,18 +116,12 @@ contract BN254_validateG1Point_Test is BN254CommonTest {
 
         if (!isOnCurve) {
             vm.expectRevert(BN254.InvalidG1.selector);
-            bn254.validateG1Point(point);
+            BN254.validateG1Point(point);
         }
     }
 }
 
 contract BN254_pairingProd2_Test is BN254CommonTest {
-    BN254 bn254;
-
-    function setUp() public {
-        bn254 = new BN254();
-    }
-
     /// @dev Test pairingProd2 function with random G1, G2 pairs,
     /// fuzzer only generate random seed, actual random pairs are generated in diff-test-bn254
     function testFuzz_pairingProd2_matches(uint64 seed) external {
@@ -164,9 +141,9 @@ contract BN254_pairingProd2_Test is BN254CommonTest {
         // when seed % 2 == 1, diff-test-bn254 will generate pairs that satisfy the pairing product
         // else it will generate unsatisyfing pairs
         if (seed % 2 == 0) {
-            assert(!bn254.pairingProd2(a1, a2, b1, b2));
+            assert(!BN254.pairingProd2(a1, a2, b1, b2));
         } else {
-            assert(bn254.pairingProd2(a1, a2, b1, b2));
+            assert(BN254.pairingProd2(a1, a2, b1, b2));
         }
     }
 }
