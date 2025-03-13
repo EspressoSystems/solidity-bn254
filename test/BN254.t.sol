@@ -148,6 +148,40 @@ contract BN254_pairingProd2_Test is BN254CommonTest {
     }
 }
 
+contract BN254_scalarField_Test is Test {
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testInvertOnZero() external {
+        vm.expectRevert(BN254.BN254ScalarInvZero.selector);
+        BN254.invert(BN254.ScalarField.wrap(0));
+    }
+}
+
+contract BN254_multiScalarMul_Test is BN254CommonTest {
+    /// forge-config: default.allow_internal_expect_revert = true
+    function test_revertWhenEmptyArray() external {
+        BN254.G1Point[] memory bases;
+        BN254.ScalarField[] memory scalars;
+        assert(bases.length == 0 && scalars.length == 0);
+        vm.expectRevert(BN254.InvalidArgs.selector);
+        BN254.multiScalarMul(bases, scalars);
+    }
+
+    function test_msm() external {
+        uint64 numBases = 5;
+
+        string[] memory cmds = new string[](3);
+        cmds[0] = "diff-test-bn254";
+        cmds[1] = "bn254-msm";
+        cmds[2] = vm.toString(numBases);
+
+        bytes memory result = vm.ffi(cmds);
+        (BN254.G1Point[] memory bases, BN254.ScalarField[] memory scalars, BN254.G1Point memory res)
+        = abi.decode(result, (BN254.G1Point[], BN254.ScalarField[], BN254.G1Point));
+
+        assertEqG1Point(res, BN254.multiScalarMul(bases, scalars));
+    }
+}
+
 contract BN254Caller {
     function foo() public view returns (BN254.G1Point memory res) {
         res = BN254.add(BN254.P1(), BN254.P1());

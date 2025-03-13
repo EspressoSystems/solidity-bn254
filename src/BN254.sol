@@ -67,6 +67,7 @@ library BN254 {
     error BN254G1AddFailed();
     error BN254ScalarMulFailed();
     error BN254ScalarInvFailed();
+    error BN254ScalarInvZero();
     error BN254PairingProdFailed();
     error InvalidArgs();
     error InvalidG1();
@@ -123,10 +124,7 @@ library BN254 {
         input[3] = BaseField.unwrap(p2.y);
         bool success;
         assembly {
-            success := staticcall(sub(gas(), 2000), 6, input, 0xc0, r, 0x60)
-            // Use "invalid" to make gas estimation work
-            switch success
-            case 0 { revert(0, 0) }
+            success := staticcall(gas(), 6, input, 0x80, r, 0x40)
         }
         require(success, BN254G1AddFailed());
     }
@@ -140,10 +138,7 @@ library BN254 {
         input[2] = ScalarField.unwrap(s);
         bool success;
         assembly {
-            success := staticcall(sub(gas(), 2000), 7, input, 0x80, r, 0x60)
-            // Use "invalid" to make gas estimation work
-            switch success
-            case 0 { revert(0, 0) }
+            success := staticcall(gas(), 7, input, 0x60, r, 0x40)
         }
         require(success, BN254ScalarMulFailed());
     }
@@ -155,7 +150,7 @@ library BN254 {
         view
         returns (G1Point memory r)
     {
-        require(scalars.length == bases.length, InvalidArgs());
+        require(scalars.length == bases.length && scalars.length != 0, InvalidArgs());
 
         r = scalarMul(bases[0], scalars[0]);
         for (uint256 i = 1; i < scalars.length; i++) {
@@ -166,6 +161,8 @@ library BN254 {
     /// @dev Compute f^-1 for f \in Fr scalar field
     /// @notice credit: Aztec, Spilsbury Holdings Ltd
     function invert(ScalarField fr) internal view returns (ScalarField output) {
+        require(ScalarField.unwrap(fr) != 0, BN254ScalarInvZero());
+
         bool success;
         uint256 p = R_MOD;
         assembly {
