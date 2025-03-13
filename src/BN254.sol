@@ -16,7 +16,7 @@
 //
 // - 13/03/2025: drop unused functions like serialize
 
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.28;
 
 /// @notice Barreto-Naehrig curve over a 254 bit prime field
 library BN254 {

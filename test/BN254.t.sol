@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.28;
 
 // Libraries
 import "forge-std/Test.sol";
@@ -145,5 +145,34 @@ contract BN254_pairingProd2_Test is BN254CommonTest {
         } else {
             assert(BN254.pairingProd2(a1, a2, b1, b2));
         }
+    }
+}
+
+contract BN254Caller {
+    function foo() public view returns (BN254.G1Point memory res) {
+        res = BN254.add(BN254.P1(), BN254.P1());
+    }
+}
+
+contract InternalLibTest is Test {
+    BN254Caller c;
+
+    function setUp() public {
+        c = new BN254Caller();
+    }
+
+    function containsDelegateCall(bytes memory code) internal pure returns (bool) {
+        for (uint256 i = 0; i < code.length - 1; i++) {
+            if (code[i] == 0xF4) {
+                // 0xF4 = DELEGATECALL opcode
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function testLibraryIsInlined() public {
+        bytes memory bytecode = address(c).code;
+        assertFalse(containsDelegateCall(bytecode), "Library should be inlined");
     }
 }
