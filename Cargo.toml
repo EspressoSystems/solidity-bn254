@@ -16,4 +16,5 @@ ark-ff = "0.4.2"
 ark-poly = "0.4.2"
 ark-serialize = "0.4.2"
 ark-std = { version = "0.4.0", default-features = false }
-ethers = { version = "2.0.4" }
+alloy = { version = "0.12.5", default-features = false, features = ["contract", "sol-types"] }
+const-hex = "1.14.0"

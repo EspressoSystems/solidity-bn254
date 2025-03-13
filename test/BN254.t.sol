@@ -40,7 +40,7 @@ contract BN254_P2_Test is BN254CommonTest {
         cmds[1] = "bn254-g2-gen";
 
         bytes memory result = vm.ffi(cmds);
-        (BN254.G2Point memory g2Gen) = abi.decode(result, (BN254.G2Point));
+        BN254.G2Point memory g2Gen = abi.decode(result, (BN254.G2Point));
 
         assertEqG2Point(bn254.P2(), g2Gen);
     }
@@ -115,7 +115,7 @@ contract BN254_validateG1Point_Test is BN254CommonTest {
         cmds[2] = vm.toString(bytes32(randScalar));
 
         bytes memory result = vm.ffi(cmds);
-        (BN254.G1Point memory point) = abi.decode(result, (BN254.G1Point));
+        BN254.G1Point memory point = abi.decode(result, (BN254.G1Point));
 
         // valid point should pass
         bn254.validateG1Point(point);
@@ -129,7 +129,7 @@ contract BN254_validateG1Point_Test is BN254CommonTest {
         cmds[2] = vm.toString(abi.encode(point));
 
         bytes memory result = vm.ffi(cmds);
-        (bool isOnCurve) = abi.decode(result, (bool));
+        bool isOnCurve = abi.decode(result, (bool));
 
         if (!isOnCurve) {
             vm.expectRevert(BN254.InvalidG1.selector);
