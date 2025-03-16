@@ -3,9 +3,9 @@ use alloy::{
     primitives::U256,
     sol_types::SolValue,
 };
-use ark_bn254::{Bn254, Fr, G1Affine, G2Affine};
+use ark_bn254::{Bn254, Fq, Fr, G1Affine, G2Affine};
 use ark_ec::{pairing::Pairing, short_weierstrass::SWCurveConfig, AffineRepr, CurveGroup, Group};
-use ark_ff::Field;
+use ark_ff::{Field, PrimeField};
 use ark_std::{
     rand::{rngs::StdRng, SeedableRng},
     test_rng, UniformRand,
@@ -44,6 +44,8 @@ enum Action {
     Bn254G1AddOp,
     /// Compute negate op in the G1 group
     Bn254G1NegOp,
+    /// Compute quadratic residue in base field
+    Bn254Qr,
     /// Test only logic
     TestOnly,
 }
@@ -180,7 +182,32 @@ fn main() {
             let neg_sol: G1Point = (-a).into();
             println!("{}", (a_sol, neg_sol).abi_encode_params().encode_hex());
         }
+        Action::Bn254Qr => {
+            if cli.args.len() != 1 {
+                panic!("Should provide arg1=seed");
+            }
+            let seed = cli.args[0].parse::<u64>().unwrap();
+            let rng = &mut StdRng::seed_from_u64(seed);
 
+            let x = Fq::rand(rng);
+            let (a, is_qr) = if let Some(a) = x.sqrt() {
+                // always choose the canonical sqrt (the smaller one)
+                if a.into_bigint() > <Fq as PrimeField>::MODULUS_MINUS_ONE_DIV_TWO {
+                    (-a, true)
+                } else {
+                    (a, true)
+                }
+            } else {
+                (Fq::default(), false)
+            };
+            // sanity check
+            if is_qr {
+                assert_eq!(a.square(), x);
+            }
+            let x_sol = field_to_u256(x);
+            let a_sol = field_to_u256(a);
+            println!("{}", (x_sol, a_sol, is_qr).abi_encode_params().encode_hex());
+        }
         Action::TestOnly => {
             eprintln!("test only");
         }

@@ -284,4 +284,43 @@ library BN254 {
 
         return result;
     }
+
+    function quadraticResidue(BaseField x)
+        internal
+        view
+        returns (bool isQuadraticResidue, BaseField)
+    {
+        bool success;
+        uint256 a;
+        // e = (p+1)/4
+        uint256 e = 0xc19139cb84c680a6e14116da060561765e05aa45a1c72a34f082305b61f3f52;
+        uint256 p = P_MOD;
+
+        // we have p == 3 mod 4 therefore
+        // a = x^((p+1)/4)
+        assembly {
+            // credit: Aztec
+            let mPtr := mload(0x40)
+            mstore(mPtr, 0x20)
+            mstore(add(mPtr, 0x20), 0x20)
+            mstore(add(mPtr, 0x40), 0x20)
+            mstore(add(mPtr, 0x60), x)
+            mstore(add(mPtr, 0x80), e)
+            mstore(add(mPtr, 0xa0), p)
+            success := staticcall(gas(), 0x05, mPtr, 0xc0, 0x00, 0x20)
+            a := mload(0x00)
+        }
+        require(success, PowPrecompileFailed());
+
+        // ensure a < p/2
+        if (a << 1 > p) {
+            a = p - a;
+        }
+
+        // check if a^2 = x, if not x is not a quadratic residue
+        e = mulmod(a, a, p);
+        isQuadraticResidue = (e == BaseField.unwrap(x));
+
+        return (isQuadraticResidue, BaseField.wrap(a));
+    }
 }

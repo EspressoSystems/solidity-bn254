@@ -24,6 +24,10 @@ contract BN254CommonTest is Test {
         assertEq(BN254.BaseField.unwrap(a.y0), BN254.BaseField.unwrap(b.y0));
         assertEq(BN254.BaseField.unwrap(a.y1), BN254.BaseField.unwrap(b.y1));
     }
+
+    function assertEq(BN254.ScalarField a, BN254.ScalarField b) public {
+        assertEq(BN254.ScalarField.unwrap(a), BN254.ScalarField.unwrap(b));
+    }
 }
 
 contract BN254_P2_Test is BN254CommonTest {
@@ -174,7 +178,7 @@ contract BN254_pairingProd2_Test is BN254CommonTest {
     }
 }
 
-contract BN254_ScalarFieldArithmetic_Test is Test {
+contract BN254_ScalarFieldArithmetic_Test is BN254CommonTest {
     /// forge-config: default.allow_internal_expect_revert = true
     function testInvertOnZero() external {
         vm.expectRevert(BN254.BN254ScalarInvZero.selector);
@@ -189,8 +193,8 @@ contract BN254_ScalarFieldArithmetic_Test is Test {
         cmds[2] = vm.toString(scalar);
 
         bytes memory result = vm.ffi(cmds);
-        uint256 inv = abi.decode(result, (uint256));
-        assertEq(inv, BN254.ScalarField.unwrap(BN254.invert(BN254.ScalarField.wrap(scalar))));
+        BN254.ScalarField inv = abi.decode(result, (BN254.ScalarField));
+        assertEq(inv, BN254.invert(BN254.ScalarField.wrap(scalar)));
     }
 
     function testFuzz_Negate(uint256 scalar) external {
@@ -201,8 +205,29 @@ contract BN254_ScalarFieldArithmetic_Test is Test {
         cmds[2] = vm.toString(scalar);
 
         bytes memory result = vm.ffi(cmds);
-        uint256 neg = abi.decode(result, (uint256));
-        assertEq(neg, BN254.ScalarField.unwrap(BN254.negate(BN254.ScalarField.wrap(scalar))));
+        BN254.ScalarField neg = abi.decode(result, (BN254.ScalarField));
+        assertEq(neg, BN254.negate(BN254.ScalarField.wrap(scalar)));
+    }
+}
+
+contract BN254_quadraticResidue_Test is BN254CommonTest {
+    function testFuzz_quadraticResidue(uint64 seed) external {
+        string[] memory cmds = new string[](3);
+        cmds[0] = "diff-test-bn254";
+        cmds[1] = "bn254-qr";
+        cmds[2] = vm.toString(seed);
+
+        bytes memory result = vm.ffi(cmds);
+        (BN254.BaseField x, uint256 expectedQr, bool isQr) =
+            abi.decode(result, (BN254.BaseField, uint256, bool));
+
+        (bool isQuadraticResidue, BN254.BaseField a) = BN254.quadraticResidue(x);
+        if (isQr) {
+            assertTrue(isQuadraticResidue);
+            assertEq(BN254.BaseField.unwrap(a), expectedQr);
+        } else {
+            assertFalse(isQuadraticResidue);
+        }
     }
 }
 
