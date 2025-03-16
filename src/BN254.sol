@@ -66,7 +66,7 @@ library BN254 {
 
     error BN254G1AddFailed();
     error BN254ScalarMulFailed();
-    error BN254ScalarInvFailed();
+    error PowPrecompileFailed();
     error BN254ScalarInvZero();
     error BN254PairingProdFailed();
     error InvalidArgs();
@@ -114,8 +114,18 @@ library BN254 {
         }
         return G1Point(p.x, BaseField.wrap(P_MOD - (BaseField.unwrap(p.y) % P_MOD)));
     }
-    /// @return r the sum of two points of G1
 
+    /// @return res = -fr the negation of scalar field element.
+    function negate(ScalarField fr) internal pure returns (ScalarField res) {
+        uint256 p = R_MOD;
+        assembly {
+            switch iszero(fr)
+            case true { res := 0 }
+            default { res := sub(p, fr) }
+        }
+    }
+
+    /// @return r the sum of two points of G1
     function add(G1Point memory p1, G1Point memory p2) internal view returns (G1Point memory r) {
         uint256[4] memory input;
         input[0] = BaseField.unwrap(p1.x);
@@ -176,7 +186,7 @@ library BN254 {
             success := staticcall(gas(), 0x05, mPtr, 0xc0, 0x00, 0x20)
             output := mload(0x00)
         }
-        require(success, BN254ScalarInvFailed());
+        require(success, PowPrecompileFailed());
     }
 
     /**

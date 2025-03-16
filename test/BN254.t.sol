@@ -40,6 +40,32 @@ contract BN254_P2_Test is BN254CommonTest {
     }
 }
 
+contract BN254_g1BasicArithmetic is BN254CommonTest {
+    function testFuzz_Add(uint64 seed) external {
+        string[] memory cmds = new string[](3);
+        cmds[0] = "diff-test-bn254";
+        cmds[1] = "bn254-g1-add-op";
+        cmds[2] = vm.toString(seed);
+
+        bytes memory result = vm.ffi(cmds);
+        (BN254.G1Point memory a, BN254.G1Point memory b, BN254.G1Point memory sum) =
+            abi.decode(result, (BN254.G1Point, BN254.G1Point, BN254.G1Point));
+        assertEqG1Point(sum, BN254.add(a, b));
+    }
+
+    function testFuzz_Negate(uint64 seed) external {
+        string[] memory cmds = new string[](3);
+        cmds[0] = "diff-test-bn254";
+        cmds[1] = "bn254-g1-neg-op";
+        cmds[2] = vm.toString(seed);
+
+        bytes memory result = vm.ffi(cmds);
+        (BN254.G1Point memory a, BN254.G1Point memory neg) =
+            abi.decode(result, (BN254.G1Point, BN254.G1Point));
+        assertEqG1Point(neg, BN254.negate(a));
+    }
+}
+
 contract BN254_scalarMul_Test is BN254CommonTest {
     /// @dev Test some edge cases
     function test_EdgeCases() external {
@@ -148,11 +174,35 @@ contract BN254_pairingProd2_Test is BN254CommonTest {
     }
 }
 
-contract BN254_scalarField_Test is Test {
+contract BN254_ScalarFieldArithmetic_Test is Test {
     /// forge-config: default.allow_internal_expect_revert = true
     function testInvertOnZero() external {
         vm.expectRevert(BN254.BN254ScalarInvZero.selector);
         BN254.invert(BN254.ScalarField.wrap(0));
+    }
+
+    function testFuzz_Invert(uint256 scalar) external {
+        scalar = bound(scalar, 1, BN254.R_MOD - 1);
+        string[] memory cmds = new string[](3);
+        cmds[0] = "diff-test-bn254";
+        cmds[1] = "bn254-scalar-inv-op";
+        cmds[2] = vm.toString(scalar);
+
+        bytes memory result = vm.ffi(cmds);
+        uint256 inv = abi.decode(result, (uint256));
+        assertEq(inv, BN254.ScalarField.unwrap(BN254.invert(BN254.ScalarField.wrap(scalar))));
+    }
+
+    function testFuzz_Negate(uint256 scalar) external {
+        scalar = bound(scalar, 0, BN254.R_MOD - 1);
+        string[] memory cmds = new string[](3);
+        cmds[0] = "diff-test-bn254";
+        cmds[1] = "bn254-scalar-neg-op";
+        cmds[2] = vm.toString(scalar);
+
+        bytes memory result = vm.ffi(cmds);
+        uint256 neg = abi.decode(result, (uint256));
+        assertEq(neg, BN254.ScalarField.unwrap(BN254.negate(BN254.ScalarField.wrap(scalar))));
     }
 }
 
