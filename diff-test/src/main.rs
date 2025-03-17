@@ -1,13 +1,17 @@
-use alloy::{primitives::U256, sol_types::SolValue};
-use ark_bn254::{Bn254, Fr, G1Affine, G2Affine};
+use alloy::{
+    hex::{self, ToHexExt},
+    primitives::U256,
+    sol_types::SolValue,
+};
+use ark_bn254::{Bn254, Fq, Fr, G1Affine, G2Affine};
 use ark_ec::{pairing::Pairing, short_weierstrass::SWCurveConfig, AffineRepr, CurveGroup, Group};
+use ark_ff::{Field, PrimeField};
 use ark_std::{
     rand::{rngs::StdRng, SeedableRng},
     test_rng, UniformRand,
 };
 use bn254_contract_adapter::{field_to_u256, u256_to_field, G1Point, G2Point};
 use clap::{Parser, ValueEnum};
-use const_hex::ToHexExt;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about=None)]
@@ -32,6 +36,16 @@ enum Action {
     Bn254PairingProd2,
     /// Generate bases and scalars for MSM computation
     Bn254MSM,
+    /// Compute inverse op in the scalar field
+    Bn254ScalarInvOp,
+    /// Compute negate op in the scalar field
+    Bn254ScalarNegOp,
+    /// Compute add op in the G1 group
+    Bn254G1AddOp,
+    /// Compute negate op in the G1 group
+    Bn254G1NegOp,
+    /// Compute quadratic residue in base field
+    Bn254Qr,
     /// Test only logic
     TestOnly,
 }
@@ -56,10 +70,9 @@ fn main() {
             if cli.args.len() != 1 {
                 panic!("Should provide arg1=point");
             }
-            let point: G1Affine =
-                G1Point::abi_decode(&const_hex::decode(&cli.args[0]).unwrap(), true)
-                    .unwrap()
-                    .into();
+            let point: G1Affine = G1Point::abi_decode(&hex::decode(&cli.args[0]).unwrap(), true)
+                .unwrap()
+                .into();
             let is_on_curve = point.is_on_curve();
             println!("{}", is_on_curve.abi_encode().encode_hex());
         }
@@ -119,6 +132,81 @@ fn main() {
 
             let res = (parsed_bases, parsed_scalars, parsed_prod);
             println!("{}", res.abi_encode_params().encode_hex());
+        }
+        Action::Bn254ScalarInvOp => {
+            if cli.args.len() != 1 {
+                panic!("Should provide arg1=scalar");
+            }
+
+            let s: Fr = u256_to_field(cli.args[0].parse::<U256>().unwrap());
+            let res = field_to_u256(s.inverse().unwrap());
+            println!("{}", res.abi_encode().encode_hex());
+        }
+        Action::Bn254ScalarNegOp => {
+            if cli.args.len() != 1 {
+                panic!("Should provide arg1=scalar");
+            }
+
+            let s: Fr = u256_to_field(cli.args[0].parse::<U256>().unwrap());
+            let res = field_to_u256(-s);
+            println!("{}", res.abi_encode().encode_hex());
+        }
+        Action::Bn254G1AddOp => {
+            if cli.args.len() != 1 {
+                panic!("Should provide arg1=seed");
+            }
+            let seed = cli.args[0].parse::<u64>().unwrap();
+            let rng = &mut StdRng::seed_from_u64(seed);
+
+            let a = G1Affine::rand(rng);
+            let b = G1Affine::rand(rng);
+            let sum = a + b;
+
+            let a_sol: G1Point = a.into();
+            let b_sol: G1Point = b.into();
+            let sum_sol: G1Point = sum.into_affine().into();
+            println!(
+                "{}",
+                (a_sol, b_sol, sum_sol).abi_encode_params().encode_hex()
+            );
+        }
+        Action::Bn254G1NegOp => {
+            if cli.args.len() != 1 {
+                panic!("Should provide arg1=seed");
+            }
+            let seed = cli.args[0].parse::<u64>().unwrap();
+            let rng = &mut StdRng::seed_from_u64(seed);
+
+            let a = G1Affine::rand(rng);
+            let a_sol: G1Point = a.into();
+            let neg_sol: G1Point = (-a).into();
+            println!("{}", (a_sol, neg_sol).abi_encode_params().encode_hex());
+        }
+        Action::Bn254Qr => {
+            if cli.args.len() != 1 {
+                panic!("Should provide arg1=seed");
+            }
+            let seed = cli.args[0].parse::<u64>().unwrap();
+            let rng = &mut StdRng::seed_from_u64(seed);
+
+            let x = Fq::rand(rng);
+            let (a, is_qr) = if let Some(a) = x.sqrt() {
+                // always choose the canonical sqrt (the smaller one)
+                if a.into_bigint() > <Fq as PrimeField>::MODULUS_MINUS_ONE_DIV_TWO {
+                    (-a, true)
+                } else {
+                    (a, true)
+                }
+            } else {
+                (Fq::default(), false)
+            };
+            // sanity check
+            if is_qr {
+                assert_eq!(a.square(), x);
+            }
+            let x_sol = field_to_u256(x);
+            let a_sol = field_to_u256(a);
+            println!("{}", (x_sol, a_sol, is_qr).abi_encode_params().encode_hex());
         }
         Action::TestOnly => {
             eprintln!("test only");

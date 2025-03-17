@@ -24,6 +24,10 @@ contract BN254CommonTest is Test {
         assertEq(BN254.BaseField.unwrap(a.y0), BN254.BaseField.unwrap(b.y0));
         assertEq(BN254.BaseField.unwrap(a.y1), BN254.BaseField.unwrap(b.y1));
     }
+
+    function assertEq(BN254.ScalarField a, BN254.ScalarField b) public {
+        assertEq(BN254.ScalarField.unwrap(a), BN254.ScalarField.unwrap(b));
+    }
 }
 
 contract BN254_P2_Test is BN254CommonTest {
@@ -37,6 +41,32 @@ contract BN254_P2_Test is BN254CommonTest {
         BN254.G2Point memory g2Gen = abi.decode(result, (BN254.G2Point));
 
         assertEqG2Point(BN254.P2(), g2Gen);
+    }
+}
+
+contract BN254_g1BasicArithmetic is BN254CommonTest {
+    function testFuzz_Add(uint64 seed) external {
+        string[] memory cmds = new string[](3);
+        cmds[0] = "diff-test-bn254";
+        cmds[1] = "bn254-g1-add-op";
+        cmds[2] = vm.toString(seed);
+
+        bytes memory result = vm.ffi(cmds);
+        (BN254.G1Point memory a, BN254.G1Point memory b, BN254.G1Point memory sum) =
+            abi.decode(result, (BN254.G1Point, BN254.G1Point, BN254.G1Point));
+        assertEqG1Point(sum, BN254.add(a, b));
+    }
+
+    function testFuzz_Negate(uint64 seed) external {
+        string[] memory cmds = new string[](3);
+        cmds[0] = "diff-test-bn254";
+        cmds[1] = "bn254-g1-neg-op";
+        cmds[2] = vm.toString(seed);
+
+        bytes memory result = vm.ffi(cmds);
+        (BN254.G1Point memory a, BN254.G1Point memory neg) =
+            abi.decode(result, (BN254.G1Point, BN254.G1Point));
+        assertEqG1Point(neg, BN254.negate(a));
     }
 }
 
@@ -148,11 +178,56 @@ contract BN254_pairingProd2_Test is BN254CommonTest {
     }
 }
 
-contract BN254_scalarField_Test is Test {
+contract BN254_ScalarFieldArithmetic_Test is BN254CommonTest {
     /// forge-config: default.allow_internal_expect_revert = true
     function testInvertOnZero() external {
         vm.expectRevert(BN254.BN254ScalarInvZero.selector);
         BN254.invert(BN254.ScalarField.wrap(0));
+    }
+
+    function testFuzz_Invert(uint256 scalar) external {
+        scalar = bound(scalar, 1, BN254.R_MOD - 1);
+        string[] memory cmds = new string[](3);
+        cmds[0] = "diff-test-bn254";
+        cmds[1] = "bn254-scalar-inv-op";
+        cmds[2] = vm.toString(scalar);
+
+        bytes memory result = vm.ffi(cmds);
+        BN254.ScalarField inv = abi.decode(result, (BN254.ScalarField));
+        assertEq(inv, BN254.invert(BN254.ScalarField.wrap(scalar)));
+    }
+
+    function testFuzz_Negate(uint256 scalar) external {
+        scalar = bound(scalar, 0, BN254.R_MOD - 1);
+        string[] memory cmds = new string[](3);
+        cmds[0] = "diff-test-bn254";
+        cmds[1] = "bn254-scalar-neg-op";
+        cmds[2] = vm.toString(scalar);
+
+        bytes memory result = vm.ffi(cmds);
+        BN254.ScalarField neg = abi.decode(result, (BN254.ScalarField));
+        assertEq(neg, BN254.negate(BN254.ScalarField.wrap(scalar)));
+    }
+}
+
+contract BN254_quadraticResidue_Test is BN254CommonTest {
+    function testFuzz_quadraticResidue(uint64 seed) external {
+        string[] memory cmds = new string[](3);
+        cmds[0] = "diff-test-bn254";
+        cmds[1] = "bn254-qr";
+        cmds[2] = vm.toString(seed);
+
+        bytes memory result = vm.ffi(cmds);
+        (BN254.BaseField x, uint256 expectedQr, bool isQr) =
+            abi.decode(result, (BN254.BaseField, uint256, bool));
+
+        (bool isQuadraticResidue, BN254.BaseField a) = BN254.quadraticResidue(x);
+        if (isQr) {
+            assertTrue(isQuadraticResidue);
+            assertEq(BN254.BaseField.unwrap(a), expectedQr);
+        } else {
+            assertFalse(isQuadraticResidue);
+        }
     }
 }
 

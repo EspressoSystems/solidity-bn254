@@ -12,7 +12,6 @@ ark-ec = { workspace = true }
 ark-ff = { workspace = true }
 ark-std = { workspace = true }
 clap = { version = "^4.4", features = ["derive"] }
-const-hex = { workspace = true }
 
 [[bin]]
 name = "diff-test-bn254"
