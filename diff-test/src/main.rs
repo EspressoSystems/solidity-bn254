@@ -4,7 +4,9 @@ use alloy::{
     sol_types::SolValue,
 };
 use ark_bn254::{Bn254, Fq, Fr, G1Affine, G2Affine};
-use ark_ec::{pairing::Pairing, short_weierstrass::SWCurveConfig, AffineRepr, CurveGroup, Group};
+use ark_ec::{
+    pairing::Pairing, short_weierstrass::SWCurveConfig, AdditiveGroup, AffineRepr, CurveGroup,
+};
 use ark_ff::{Field, PrimeField};
 use ark_std::{
     rand::{rngs::StdRng, SeedableRng},
@@ -70,7 +72,7 @@ fn main() {
             if cli.args.len() != 1 {
                 panic!("Should provide arg1=point");
             }
-            let point: G1Affine = G1Point::abi_decode(&hex::decode(&cli.args[0]).unwrap(), true)
+            let point: G1Affine = G1Point::abi_decode(&hex::decode(&cli.args[0]).unwrap())
                 .unwrap()
                 .into();
             let is_on_curve = point.is_on_curve();

@@ -62,8 +62,8 @@ where
             }
         } else {
             Self {
-                x: field_to_u256::<P::BaseField>(*p.x().unwrap()),
-                y: field_to_u256::<P::BaseField>(*p.y().unwrap()),
+                x: field_to_u256::<P::BaseField>(p.x().unwrap()),
+                y: field_to_u256::<P::BaseField>(p.y().unwrap()),
             }
         }
     }

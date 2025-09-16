@@ -113,8 +113,7 @@
             solc
             nixWithFlakes
             nixpkgs-fmt
-          ] ++ lib.optionals stdenv.isDarwin
-            [ darwin.apple_sdk.frameworks.SystemConfiguration ];
+          ];
           shellHook = ''
             export CARGO_HOME=$HOME/.cargo-nix
             export PATH="$PWD/$CARGO_TARGET_DIR/release:$PATH"
